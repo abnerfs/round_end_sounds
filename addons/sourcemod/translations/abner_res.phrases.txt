@@ -1,0 +1,19 @@
+"Phrases"
+{
+	"JoinMsg"
+	{
+		"en"		"Type {lightgreen}!res {default}to disable/enable the round end sounds."
+	}
+	"Selected"
+	{
+		"en"	  	"(X)"
+	}
+	"RES_ON"
+	{
+		"en"	  	"Sounds ON."
+	}
+	"RES_OFF"
+	{
+		"en"	  	"No Sounds."
+	}
+}
