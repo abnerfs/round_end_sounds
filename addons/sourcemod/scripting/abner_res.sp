@@ -20,13 +20,18 @@
 #include <sdktools>
 #include <colors>
 #include <clientprefs>
-#include <soundlib>
 #include <cstrike>
+
+//SoundLib Now Optional Bros!!
+#undef REQUIRE_EXTENSIONS
+#include <soundlib>
+new bool:soundLib;
+
 
 #pragma semicolon 1
 
 #define ABNER_ADMINFLAG ADMFLAG_SLAY
-#define PLUGIN_VERSION "3.0"
+#define PLUGIN_VERSION "3.1"
 
 #define MAX_EDICTS		2048
 #define MAX_SOUNDS		1024
@@ -58,6 +63,17 @@ new String:soundtr[MAX_SOUNDS][PLATFORM_MAX_PATH];
 
 new String:sCookieValue[11];
 
+
+
+
+public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
+{
+	MarkNativeAsOptional("GetSoundLengthFloat");
+	MarkNativeAsOptional("OpenSoundFile");
+	return APLRes_Success;
+}
+
+
 public Plugin:myinfo =
 {
 	name = "[CS:GO/CSS] AbNeR Round End Sounds",
@@ -69,6 +85,15 @@ public Plugin:myinfo =
 
 public OnPluginStart()
 {  
+	if (GetFeatureStatus(FeatureType_Native, "GetSoundLengthFloat") == FeatureStatus_Available)
+	{
+		soundLib = true;
+	}  
+	else
+	{
+		soundLib = false;
+	}
+	
 	//Cvars
 	CreateConVar("abner_res_version", PLUGIN_VERSION, "Plugin version", FCVAR_PLUGIN|FCVAR_NOTIFY|FCVAR_REPLICATED);
 	g_hTRPath = CreateConVar("res_tr_path", "misc/tecnohard", "Path off tr sounds in /cstrike/sound");
@@ -77,6 +102,7 @@ public OnPluginStart()
 	g_hStop = CreateConVar("res_stop_map_music", "1", "Stop map musics");	
 	g_playToTheEnd = CreateConVar("res_play_to_the_end", "1", "Play sounds to the end.");
 	g_roundDrawPlay = CreateConVar("res_rounddraw_play", "0", "0 - Don´t play sounds, 1 - Play TR sounds, 2 - Play CT sounds.");
+	
 	
 	//ClientPrefs
 	g_AbNeRCookie = RegClientCookie("AbNeR Round End Sounds", "", CookieAccess_Private);
@@ -513,11 +539,14 @@ PlaySoundCT()
 
 soundLenght(String:sound[])
 {
-	new Handle:Sound = OpenSoundFile(sound);
-	if(Sound != INVALID_HANDLE)
-		CurrentSoundLenght = GetSoundLengthFloat(Sound);
-	else
-		CurrentSoundLenght = 0.0;
+	if(soundLib)
+	{
+		new Handle:Sound = OpenSoundFile(sound);
+		if(Sound != INVALID_HANDLE)
+			CurrentSoundLenght = GetSoundLengthFloat(Sound);
+		else
+			CurrentSoundLenght = 0.0;
+	}
 	lenghtStored = true;
 }
 
@@ -585,7 +614,7 @@ public Action:CS_OnTerminateRound(&Float:delay, &CSRoundEndReason:reason)
 		}
 	}
 	
-	if(GetConVarInt(g_playToTheEnd) == 1 && winner > 0)
+	if(GetConVarInt(g_playToTheEnd) == 1 && winner > 0 && soundLib)
 	{
 		while(!lenghtStored){} //Do Nothing just wait...
 		if(CurrentSoundLenght > 0.0)
