@@ -3,17 +3,21 @@
 	"JoinMsg"
 	{
 		"en"		"Type {lightgreen}!res {default}to disable/enable the round end sounds."
+		"ru"		"Напишите {lightgreen}!res {default}что бы включить/отключить музыку в конце раунда."
 	}
 	"Selected"
 	{
 		"en"	  	"(X)"
+		"ru"	  	"(X)"
 	}
 	"RES_ON"
 	{
 		"en"	  	"Sounds ON."
+		"ru"	  	"Играть с музыкой."
 	}
 	"RES_OFF"
 	{
 		"en"	  	"No Sounds."
+		"ru"	  	"Без музыки."
 	}
 }
