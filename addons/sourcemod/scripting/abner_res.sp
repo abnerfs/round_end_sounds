@@ -31,7 +31,7 @@ new bool:soundLib;
 #pragma semicolon 1
 
 #define ABNER_ADMINFLAG ADMFLAG_SLAY
-#define PLUGIN_VERSION "3.1"
+#define PLUGIN_VERSION "3.2"
 
 #define MAX_EDICTS		2048
 #define MAX_SOUNDS		1024
@@ -551,18 +551,20 @@ soundLenght(String:sound[])
 }
 
 //Round End Reasons
-//TRWIN 0 2 3 8 12 14 17
+//TRWIN 0 2 3 8 12 14 17 19
 //CTWIN 4 5 6 7 10 11 13 16
 //DRAW 9 15
 
-GetWinner(CSRoundEndReason:reason)
+int GetWinner(CSRoundEndReason:reason)
 {
 	if(reason == CSRoundEndReason:0 
 	|| reason == CSRoundEndReason:2 
 	|| reason == CSRoundEndReason:3	
 	|| reason == CSRoundEndReason:8 
 	|| reason == CSRoundEndReason:12 
-	|| reason == CSRoundEndReason:14)
+	|| reason == CSRoundEndReason:14
+	|| reason == CSRoundEndReason:19 //Added v3.2
+	)
 		return 2;
 		
 	else if(reason != CSRoundEndReason:9
