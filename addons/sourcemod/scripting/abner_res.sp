@@ -25,48 +25,44 @@
 //SoundLib Now Optional Bros!!
 #undef REQUIRE_EXTENSIONS
 #include <soundlib>
-new bool:soundLib;
+bool soundLib;
 
+#pragma newdecls required // 2015 rules 
 
 #pragma semicolon 1
 
 #define ABNER_ADMINFLAG ADMFLAG_SLAY
-#define PLUGIN_VERSION "3.2"
+#define PLUGIN_VERSION "3.2fix"
 
 #define MAX_EDICTS		2048
 #define MAX_SOUNDS		1024
 
-new g_iSoundEnts[MAX_EDICTS];
-new g_iNumSounds;
+int g_iSoundEnts[MAX_EDICTS];
+int g_iNumSounds;
 
-new Handle:g_hCTPath;
-new Handle:g_hTRPath;
-new Handle:g_hPlayType;
-new Handle:g_AbNeRCookie;
-new Handle:g_hStop;
-new Handle:g_playToTheEnd;
-new Handle:g_roundDrawPlay;
+Handle g_hCTPath;
+Handle g_hTRPath;
+Handle g_hPlayType;
+Handle g_AbNeRCookie;
+Handle g_hStop;
+Handle g_playToTheEnd;
+Handle g_roundDrawPlay;
 
-new bool:g_bClientPreference[MAXPLAYERS+1];
-new bool:SoundsTRSucess = false;
-new bool:SoundsCTSucess = false;
-new bool:SamePath = false;
-new bool:CSGO;
-new Float:CurrentSoundLenght = 0.0;
-new bool:lenghtStored = false;
+bool g_bClientPreference[MAXPLAYERS+1];
+bool SoundsTRSucess = false;
+bool SoundsCTSucess = false;
+bool SamePath = false;
+bool CSGO;
 
-new g_SoundsTR = 0;
-new g_SoundsCT = 0;
+int g_SoundsTR = 0;
+int g_SoundsCT = 0;
 
-new String:soundct[MAX_SOUNDS][PLATFORM_MAX_PATH];
-new String:soundtr[MAX_SOUNDS][PLATFORM_MAX_PATH];
+char soundct[MAX_SOUNDS][PLATFORM_MAX_PATH];
+char soundtr[MAX_SOUNDS][PLATFORM_MAX_PATH];
 
-new String:sCookieValue[11];
+char sCookieValue[11];
 
-
-
-
-public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
 	MarkNativeAsOptional("GetSoundLengthFloat");
 	MarkNativeAsOptional("OpenSoundFile");
@@ -74,7 +70,7 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 }
 
 
-public Plugin:myinfo =
+public Plugin myinfo =
 {
 	name = "[CS:GO/CSS] AbNeR Round End Sounds",
 	author = "AbNeR_CSS",
@@ -83,16 +79,9 @@ public Plugin:myinfo =
 	url = "http://www.tecnohardclan.com/forum/"
 }
 
-public OnPluginStart()
+public void OnPluginStart()
 {  
-	if (GetFeatureStatus(FeatureType_Native, "GetSoundLengthFloat") == FeatureStatus_Available)
-	{
-		soundLib = true;
-	}  
-	else
-	{
-		soundLib = false;
-	}
+	soundLib = (GetFeatureStatus(FeatureType_Native, "GetSoundLengthFloat") == FeatureStatus_Available);
 	
 	//Cvars
 	CreateConVar("abner_res_version", PLUGIN_VERSION, "Plugin version", FCVAR_PLUGIN|FCVAR_NOTIFY|FCVAR_REPLICATED);
@@ -100,16 +89,16 @@ public OnPluginStart()
 	g_hCTPath = CreateConVar("res_ct_path", "misc/tecnohard", "Path off ct sounds in /cstrike/sound");
 	g_hPlayType = CreateConVar("res_play_type", "1", "1 - Random, 2- Play in queue");
 	g_hStop = CreateConVar("res_stop_map_music", "1", "Stop map musics");	
-	g_playToTheEnd = CreateConVar("res_play_to_the_end", "1", "Play sounds to the end.");
+	g_playToTheEnd = CreateConVar("res_play_to_the_end", "0", "Play sounds to the end.");
 	g_roundDrawPlay = CreateConVar("res_rounddraw_play", "0", "0 - Don´t play sounds, 1 - Play TR sounds, 2 - Play CT sounds.");
 	
 	
 	//ClientPrefs
 	g_AbNeRCookie = RegClientCookie("AbNeR Round End Sounds", "", CookieAccess_Private);
-	new info;
-	SetCookieMenuItem(SoundCookieHandler, any:info, "AbNeR Round End Sounds");
+	int info;
+	SetCookieMenuItem(SoundCookieHandler, info, "AbNeR Round End Sounds");
 	
-	for (new i = MaxClients; i > 0; --i)
+	for (int i = MaxClients; i > 0; --i)
     {
         if (!AreClientCookiesCached(i))
         {
@@ -130,22 +119,15 @@ public OnPluginStart()
 	HookConVarChange(g_hCTPath, PathChange);
 	HookConVarChange(g_hPlayType, PathChange);
 	
-	decl String:theFolder[40];
+	char theFolder[40];
 	GetGameFolderName(theFolder, sizeof(theFolder));
-	if(StrEqual(theFolder, "csgo"))
-	{
-		CSGO = true;
-	}
-	else
-	{
-		CSGO = false;
-	}
+	CSGO = StrEqual(theFolder, "csgo");
 	
 	HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
 }
 
 
-stock bool:IsValidClient(client)
+stock bool IsValidClient(int client)
 {
 	if(client <= 0 ) return false;
 	if(client > MaxClients) return false;
@@ -153,13 +135,13 @@ stock bool:IsValidClient(client)
 	return IsClientInGame(client);
 }
 
-public StopMapMusic()
+public void StopMapMusic()
 {
-	decl String:sSound[PLATFORM_MAX_PATH];
-	new entity = INVALID_ENT_REFERENCE;
-	for(new i=1;i<=MaxClients;i++){
+	char sSound[PLATFORM_MAX_PATH];
+	int entity = INVALID_ENT_REFERENCE;
+	for(int i=1;i<=MaxClients;i++){
 		if(!IsClientInGame(i)){ continue; }
-		for (new u=0; u<g_iNumSounds; u++){
+		for (int u=0; u<g_iNumSounds; u++){
 			entity = EntRefToEntIndex(g_iSoundEnts[u]);
 			if (entity != INVALID_ENT_REFERENCE){
 				GetEntPropString(entity, Prop_Data, "m_iszSound", sSound, sizeof(sSound));
@@ -171,30 +153,28 @@ public StopMapMusic()
 
 
 
-stock Client_StopSound(client, entity, channel, const String:name[])
+stock void Client_StopSound(int client, int entity, int channel, const char[] name)
 {
 	EmitSoundToClient(client, name, entity, channel, SNDLEVEL_NONE, SND_STOP, 0.0, SNDPITCH_NORMAL, _, _, _, true);
 }
 
 
-public Event_RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
+public void Event_RoundStart(Handle event, const char[] name, bool dontBroadcast)
 {
-	lenghtStored = false;
-	CurrentSoundLenght = 0.0;
 	if(GetConVarInt(g_hStop) == 1)
 	{
 		// Ents are recreated every round.
 		g_iNumSounds = 0;
 		
 		// Find all ambient sounds played by the map.
-		decl String:sSound[PLATFORM_MAX_PATH];
-		new entity = INVALID_ENT_REFERENCE;
+		char sSound[PLATFORM_MAX_PATH];
+		int entity = INVALID_ENT_REFERENCE;
 		
 		while ((entity = FindEntityByClassname(entity, "ambient_generic")) != INVALID_ENT_REFERENCE)
 		{
 			GetEntPropString(entity, Prop_Data, "m_iszSound", sSound, sizeof(sSound));
 			
-			new len = strlen(sSound);
+			int len = strlen(sSound);
 			if (len > 4 && (StrEqual(sSound[len-3], "mp3") || StrEqual(sSound[len-3], "wav")))
 			{
 				g_iSoundEnts[g_iNumSounds++] = EntIndexToEntRef(entity);
@@ -205,18 +185,18 @@ public Event_RoundStart(Handle:event, const String:name[], bool:dontBroadcast)
 
 
 
-public SoundCookieHandler(client, CookieMenuAction:action, any:info, String:buffer[], maxlen)
+public void SoundCookieHandler(int client, CookieMenuAction action, any info, char[] buffer, int maxlen)
 {
 	OnClientCookiesCached(client);
 	abnermenu(client, 0);
 } 
 
-public OnClientPutInServer(client)
+public void OnClientPutInServer(int client)
 {
 	CreateTimer(3.0, msg, client);
 }
 
-public Action:msg(Handle:timer, any:client)
+public Action msg(Handle timer, any client)
 {
 	if(IsValidClient(client))
 	{
@@ -224,13 +204,13 @@ public Action:msg(Handle:timer, any:client)
 	}
 }
 
-public Action:abnermenu(client, args)
+public Action abnermenu(int client, int args)
 {
 	GetClientCookie(client, g_AbNeRCookie, sCookieValue, sizeof(sCookieValue));
-	new cookievalue = StringToInt(sCookieValue);
-	new Handle:g_AbNeRMenu = CreateMenu(AbNeRMenuHandler);
+	int cookievalue = StringToInt(sCookieValue);
+	Handle g_AbNeRMenu = CreateMenu(AbNeRMenuHandler);
 	SetMenuTitle(g_AbNeRMenu, "Round End Sounds by AbNeR_CSS");
-	decl String:Item[128];
+	char Item[128];
 	if(cookievalue == 0)
 	{
 		Format(Item, sizeof(Item), "%t %t", "RES_ON", "Selected"); 
@@ -250,9 +230,9 @@ public Action:abnermenu(client, args)
 	DisplayMenu(g_AbNeRMenu, client, 30);
 }
 
-public AbNeRMenuHandler(Handle:menu, MenuAction:action, param1, param2)
+public int AbNeRMenuHandler(Handle menu, MenuAction action, int param1, int param2)
 {
-	new Handle:g_AbNeRMenu = CreateMenu(AbNeRMenuHandler);
+	Handle g_AbNeRMenu = CreateMenu(AbNeRMenuHandler);
 	if (action == MenuAction_DrawItem)
 	{
 		return ITEMDRAW_DEFAULT;
@@ -283,24 +263,24 @@ public AbNeRMenuHandler(Handle:menu, MenuAction:action, param1, param2)
 
 
 
-public OnClientCookiesCached(client)
+public void OnClientCookiesCached(int client)
 {
-    decl String:sValue[8];
+    char sValue[8];
     GetClientCookie(client, g_AbNeRCookie, sValue, sizeof(sValue));
     
     g_bClientPreference[client] = (sValue[0] != '\0' && StringToInt(sValue));
 } 
 
 
-public PathChange(Handle:cvar, const String:oldVal[], const String:newVal[])
+public void PathChange(Handle cvar, const char[] oldVal, const char[] newVal)
 {       
 	OnMapStart();
 }
 
-public OnMapStart()
+public void OnMapStart()
 {
-	decl String:soundpath[PLATFORM_MAX_PATH];
-	decl String:soundpath2[PLATFORM_MAX_PATH];
+	char soundpath[PLATFORM_MAX_PATH];
+	char soundpath2[PLATFORM_MAX_PATH];
 	GetConVarString(g_hTRPath, soundpath, sizeof(soundpath));
 	GetConVarString(g_hCTPath, soundpath2, sizeof(soundpath2));
 	
@@ -318,18 +298,18 @@ public OnMapStart()
 }
 
  
-LoadSoundsTR(client)
+void LoadSoundsTR(int client)
 {
-	new namelen;
-	new FileType:type;
-	new String:name[64];
-	new String:soundname[64];
-	new String:soundname2[64];
-	decl String:soundpath[PLATFORM_MAX_PATH];
-	decl String:soundpath2[PLATFORM_MAX_PATH];
+	int namelen;
+	FileType type;
+	char name[64];
+	char soundname[64];
+	char soundname2[64];
+	char soundpath[PLATFORM_MAX_PATH];
+	char soundpath2[PLATFORM_MAX_PATH];
 	GetConVarString(g_hTRPath, soundpath, sizeof(soundpath));
 	Format(soundpath2, sizeof(soundpath2), "sound/%s/", soundpath);
-	new Handle:pluginsdir = OpenDirectory(soundpath2);
+	Handle pluginsdir = OpenDirectory(soundpath2);
 	g_SoundsTR = 0;
 	SoundsTRSucess = (pluginsdir != INVALID_HANDLE);
 	if(SoundsTRSucess)
@@ -368,18 +348,18 @@ LoadSoundsTR(client)
 	}
 }
 
-LoadSoundsCT(client)
+void LoadSoundsCT(int client)
 {
-	new namelen;
-	new FileType:type;
-	new String:name[64];
-	new String:soundname[64];
-	new String:soundname2[64];
-	decl String:soundpath[PLATFORM_MAX_PATH];
-	decl String:soundpath2[PLATFORM_MAX_PATH];
+	int namelen;
+	FileType type;
+	char name[64];
+	char soundname[64];
+	char soundname2[64];
+	char soundpath[PLATFORM_MAX_PATH];
+	char soundpath2[PLATFORM_MAX_PATH];
 	GetConVarString(g_hCTPath, soundpath, sizeof(soundpath));
 	Format(soundpath2, sizeof(soundpath2), "sound/%s/", soundpath);
-	new Handle:pluginsdir = OpenDirectory(soundpath2);
+	Handle pluginsdir = OpenDirectory(soundpath2);
 	g_SoundsCT = 0;
 	SoundsCTSucess = (pluginsdir != INVALID_HANDLE);
 	if(SoundsCTSucess)
@@ -410,9 +390,9 @@ LoadSoundsCT(client)
 }
 
 
-DeleteTRSound(rnd_sound)
+stock void DeleteTRSound(int rnd_sound)
 {
-	for (new i = 0; i < g_SoundsTR; i++)
+	for (int i = 0; i < g_SoundsTR; i++)
 	{
 		if(i >= rnd_sound)
 			soundtr[i] = soundtr[i+1];
@@ -421,9 +401,9 @@ DeleteTRSound(rnd_sound)
 		LoadSoundsTR(0);
 }
 
-DeleteCTSound(rnd_sound)
+stock void DeleteCTSound(int rnd_sound)
 {
-	for (new i = 0; i < g_SoundsCT; i++)
+	for (int i = 0; i < g_SoundsCT; i++)
 	{
 		if(i >= rnd_sound)
 			soundct[i] = soundct[i+1];
@@ -433,9 +413,9 @@ DeleteCTSound(rnd_sound)
 }
 
 
-PlaySoundTRCSGO()
+float PlaySoundTRCSGO()
 {
-	new soundToPlay;
+	int soundToPlay;
 	if(GetConVarInt(g_hPlayType) == 1)
 	{
 		soundToPlay = GetRandomInt(0, g_SoundsTR-1);
@@ -444,11 +424,11 @@ PlaySoundTRCSGO()
 	{
 		soundToPlay = 0;
 	}
-	soundLenght(soundtr[soundToPlay]);
-	for (new i = 1; i <= MaxClients; i++)
+	
+	for (int i = 1; i <= MaxClients; i++)
 	{
 		GetClientCookie(i, g_AbNeRCookie, sCookieValue, sizeof(sCookieValue));
-		new cookievalue = StringToInt(sCookieValue);
+		int cookievalue = StringToInt(sCookieValue);
 		if(IsValidClient(i) && cookievalue == 0)
 		{
 			ClientCommand(i, "playgamesound Music.StopAllMusic");
@@ -456,13 +436,14 @@ PlaySoundTRCSGO()
 		}
 	}
 	DeleteTRSound(soundToPlay);
+	return soundLenght(soundtr[soundToPlay]);
 }
 
 
 
-PlaySoundCTCSGO()
+float PlaySoundCTCSGO()
 {
-	new soundToPlay;
+	int soundToPlay;
 	if(GetConVarInt(g_hPlayType) == 1)
 	{
 		soundToPlay = GetRandomInt(0, g_SoundsCT-1);
@@ -471,11 +452,11 @@ PlaySoundCTCSGO()
 	{
 		soundToPlay = 0;
 	}
-	soundLenght(soundct[soundToPlay]);
-	for (new i = 1; i <= MaxClients; i++)
+	
+	for (int i = 1; i <= MaxClients; i++)
 	{
 		GetClientCookie(i, g_AbNeRCookie, sCookieValue, sizeof(sCookieValue));
-		new cookievalue = StringToInt(sCookieValue);
+		int cookievalue = StringToInt(sCookieValue);
 		if(IsValidClient(i) && cookievalue == 0)
 		{
 			ClientCommand(i, "playgamesound Music.StopAllMusic");
@@ -483,12 +464,13 @@ PlaySoundCTCSGO()
 		}
 	}
 	DeleteCTSound(soundToPlay);
+	return soundLenght(soundct[soundToPlay]);
 }
 
 
-PlaySoundTR()
+float PlaySoundTR()
 {
-	new soundToPlay;
+	int soundToPlay;
 	if(GetConVarInt(g_hPlayType) == 1)
 	{
 		soundToPlay = GetRandomInt(0, g_SoundsTR-1);
@@ -498,23 +480,23 @@ PlaySoundTR()
 		soundToPlay = 0;
 	}
 	
-	soundLenght(soundtr[soundToPlay]);
-	for (new i = 1; i <= MaxClients; i++)
+	for (int i = 1; i <= MaxClients; i++)
 	{
 		GetClientCookie(i, g_AbNeRCookie, sCookieValue, sizeof(sCookieValue));
-		new cookievalue = StringToInt(sCookieValue);
+		int cookievalue = StringToInt(sCookieValue);
 		if(IsValidClient(i) && cookievalue == 0)
 		{
 			ClientCommand(i, "play %s", soundtr[soundToPlay]);
 		}
 	}
 	DeleteTRSound(soundToPlay);
+	return soundLenght(soundtr[soundToPlay]);
 	
 }
 
-PlaySoundCT()
+float PlaySoundCT()
 {
-	new soundToPlay;
+	int soundToPlay;
 	if(GetConVarInt(g_hPlayType) == 1)
 	{
 		soundToPlay = GetRandomInt(0, g_SoundsCT-1);
@@ -523,31 +505,31 @@ PlaySoundCT()
 	{
 		soundToPlay = 0;
 	}
-	soundLenght(soundct[soundToPlay]);
-	for (new i = 1; i <= MaxClients; i++)
+	
+	for (int i = 1; i <= MaxClients; i++)
 	{
 		GetClientCookie(i, g_AbNeRCookie, sCookieValue, sizeof(sCookieValue));
-		new cookievalue = StringToInt(sCookieValue);
+		int cookievalue = StringToInt(sCookieValue);
 		if(IsValidClient(i) && cookievalue == 0)
 		{
 			ClientCommand(i, "play %s", soundct[soundToPlay]);
 		}
 	}
 	DeleteCTSound(soundToPlay);
+	return soundLenght(soundct[soundToPlay]);
 }
 
 
-soundLenght(String:sound[])
+float soundLenght(char[] sound)
 {
+	float CurrentSoundLenght = 0.0;
 	if(soundLib)
 	{
-		new Handle:Sound = OpenSoundFile(sound);
+		Handle Sound = OpenSoundFile(sound);
 		if(Sound != INVALID_HANDLE)
 			CurrentSoundLenght = GetSoundLengthFloat(Sound);
-		else
-			CurrentSoundLenght = 0.0;
 	}
-	lenghtStored = true;
+	return CurrentSoundLenght;
 }
 
 //Round End Reasons
@@ -555,28 +537,29 @@ soundLenght(String:sound[])
 //CTWIN 4 5 6 7 10 11 13 16
 //DRAW 9 15
 
-int GetWinner(CSRoundEndReason:reason)
+int GetWinner(CSRoundEndReason reason)
 {
-	if(reason == CSRoundEndReason:0 
-	|| reason == CSRoundEndReason:2 
-	|| reason == CSRoundEndReason:3	
-	|| reason == CSRoundEndReason:8 
-	|| reason == CSRoundEndReason:12 
-	|| reason == CSRoundEndReason:14
-	|| reason == CSRoundEndReason:19 //Added v3.2
+	if(reason == view_as<CSRoundEndReason>(0) 
+	|| reason == view_as<CSRoundEndReason>(2) 
+	|| reason == view_as<CSRoundEndReason>(3) 	
+	|| reason == view_as<CSRoundEndReason>(8)  
+	|| reason == view_as<CSRoundEndReason>(12) 
+	|| reason == view_as<CSRoundEndReason>(14) 
+	|| reason == view_as<CSRoundEndReason>(19) //Added v3.2
 	)
 		return 2;
 		
-	else if(reason != CSRoundEndReason:9
-			&& reason != CSRoundEndReason:15)
+	else if(reason != view_as<CSRoundEndReason>(9)
+			&& reason != view_as<CSRoundEndReason>(15))
 		return 3;
 	
 	return 0;
 }
 
-public Action:CS_OnTerminateRound(&Float:delay, &CSRoundEndReason:reason)
+public Action CS_OnTerminateRound(float &delay, CSRoundEndReason &reason)
 {
-	new winner = GetWinner(CSRoundEndReason:reason);
+	int winner = GetWinner(reason);
+	float CurrentSoundLenght;
 	
 	if(winner == 0)
 	{
@@ -592,8 +575,8 @@ public Action:CS_OnTerminateRound(&Float:delay, &CSRoundEndReason:reason)
 	{
 		if(SoundsTRSucess)
 		{
-			if(CSGO) PlaySoundTRCSGO();
-			else PlaySoundTR();
+			if(CSGO) CurrentSoundLenght = PlaySoundTRCSGO();
+			else CurrentSoundLenght = PlaySoundTR();
 		}
 		else
 		{
@@ -606,8 +589,8 @@ public Action:CS_OnTerminateRound(&Float:delay, &CSRoundEndReason:reason)
 	{
 		if(SoundsCTSucess)
 		{
-			if(CSGO) PlaySoundCTCSGO();
-			else PlaySoundCT();
+			if(CSGO) CurrentSoundLenght = PlaySoundCTCSGO();
+			else CurrentSoundLenght = PlaySoundCT();
 		}
 		else
 		{
@@ -616,23 +599,19 @@ public Action:CS_OnTerminateRound(&Float:delay, &CSRoundEndReason:reason)
 		}
 	}
 	
-	if(GetConVarInt(g_playToTheEnd) == 1 && winner > 0 && soundLib)
+	if(GetConVarInt(g_playToTheEnd) == 1 && winner > 0 && soundLib && CurrentSoundLenght > 0.0)
 	{
-		while(!lenghtStored){} //Do Nothing just wait...
-		if(CurrentSoundLenght > 0.0)
-		{
-			CS_TerminateRound(CurrentSoundLenght, CSRoundEndReason:reason, true);
+			CS_TerminateRound(CurrentSoundLenght, reason, true);
 			return Plugin_Handled;
-		}
 	}
 	return Plugin_Continue;
 }
- 
 
-public Action:CommandLoad(client, args)
+
+public Action CommandLoad(int client, int args)
 {   
-	decl String:soundpath[PLATFORM_MAX_PATH];
-	decl String:soundpath2[PLATFORM_MAX_PATH];
+	char soundpath[PLATFORM_MAX_PATH];
+	char soundpath2[PLATFORM_MAX_PATH];
 	GetConVarString(g_hTRPath, soundpath, sizeof(soundpath));
 	GetConVarString(g_hCTPath, soundpath2, sizeof(soundpath2));
 	if(StrEqual(soundpath, soundpath2))
