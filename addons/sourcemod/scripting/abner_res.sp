@@ -4,14 +4,9 @@
 #include <clientprefs>
 #include <cstrike>
 
-//SoundLib Optional
-#undef REQUIRE_EXTENSIONS
-#include <soundlib>
-bool soundLib;
-
 #pragma newdecls required // 2015 rules 
 #pragma semicolon 1
-#define PLUGIN_VERSION "3.3"
+#define PLUGIN_VERSION "3.3fix_simple"
 
 //MapSounds Stuff
 int g_iSoundEnts[2048];
@@ -23,28 +18,20 @@ Handle g_hTRPath;
 Handle g_hPlayType;
 Handle g_AbNeRCookie;
 Handle g_hStop;
-Handle g_playToTheEnd;
+Handle g_PlayPrint;
 Handle g_roundDrawPlay;
 
 bool SoundsTRSucess = false;
 bool SoundsCTSucess = false;
 bool SamePath = false;
 bool CSGO;
+//Sounds Arrays
 ArrayList ctSound;
 ArrayList trSound;
 
-
-public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
-{
-	MarkNativeAsOptional("GetSoundLengthFloat");
-	MarkNativeAsOptional("OpenSoundFile");
-	return APLRes_Success;
-}
-
-
 public Plugin myinfo =
 {
-	name = "[CS:GO/CSS] AbNeR Round End Sounds",
+	name = "[CS:GO/CSS] AbNeR Round End Sounds Simple",
 	author = "AbNeR_CSS",
 	description = "Play cool musics when round ends!",
 	version = PLUGIN_VERSION,
@@ -53,24 +40,21 @@ public Plugin myinfo =
 
 public void OnPluginStart()
 {  
-	soundLib = (GetFeatureStatus(FeatureType_Native, "GetSoundLengthFloat") == FeatureStatus_Available);
-	
 	//Cvars
 	CreateConVar("abner_res_version", PLUGIN_VERSION, "Plugin version", FCVAR_NOTIFY|FCVAR_REPLICATED);
-	g_hTRPath = CreateConVar("res_tr_path", "misc/tecnohard", "Path off tr sounds in /cstrike/sound");
-	g_hCTPath = CreateConVar("res_ct_path", "misc/tecnohard", "Path off ct sounds in /cstrike/sound");
-	g_hPlayType = CreateConVar("res_play_type", "1", "1 - Random, 2- Play in queue");
-	g_hStop = CreateConVar("res_stop_map_music", "1", "Stop map musics");	
-	g_playToTheEnd = CreateConVar("res_play_to_the_end", "0", "Play sounds to the end.");
-	g_roundDrawPlay = CreateConVar("res_rounddraw_play", "0", "0 - Don´t play sounds, 1 - Play TR sounds, 2 - Play CT sounds.");
-		
+	g_hTRPath              = CreateConVar("res_tr_path", "misc/tecnohard", "Path off tr sounds in /cstrike/sound");
+	g_hCTPath              = CreateConVar("res_ct_path", "misc/tecnohard", "Path off ct sounds in /cstrike/sound");
+	g_hPlayType           = CreateConVar("res_play_type", "1", "1 - Random, 2- Play in queue");
+	g_hStop                  = CreateConVar("res_stop_map_music", "1", "Stop map musics");	
+	g_PlayPrint             = CreateConVar("res_print_to_chat_mp3_name", "1", "Print mp3 name in chat (Suggested by m22b)");
+	g_roundDrawPlay   = CreateConVar("res_rounddraw_play", "0", "0 - Don´t play sounds, 1 - Play TR sounds, 2 - Play CT sounds.");
+	
 	//ClientPrefs
 	g_AbNeRCookie = RegClientCookie("AbNeR Round End Sounds", "", CookieAccess_Private);
 	SetCookieMenuItem(SoundCookieHandler, 0, "AbNeR Round End Sounds");
 	
 	LoadTranslations("common.phrases");
 	LoadTranslations("abner_res.phrases");
-		
 	AutoExecConfig(true, "abner_res");
 
 	RegAdminCmd("res_refresh", CommandLoad, ADMFLAG_SLAY);
@@ -82,13 +66,13 @@ public void OnPluginStart()
 	
 	char theFolder[40];
 	GetGameFolderName(theFolder, sizeof(theFolder));
-	CSGO = StrEqual(theFolder, "csgo");
-	
+	CSGO = StrEqual(theFolder, ("csgo"));
 	HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
+	HookEvent("round_end", Event_RoundEnd);
+	
 	ctSound = new ArrayList(128);
 	trSound = new ArrayList(128);
 }
-
 
 stock bool IsValidClient(int client)
 {
@@ -117,6 +101,54 @@ public void StopMapMusic()
 stock void Client_StopSound(int client, int entity, int channel, const char[] name)
 {
 	EmitSoundToClient(client, name, entity, channel, SNDLEVEL_NONE, SND_STOP, 0.0, SNDPITCH_NORMAL, _, _, _, true);
+}
+
+public void Event_RoundEnd(Handle event, const char[] name, bool dontBroadcast)
+{
+	int winner = GetEventInt(event, "winner");
+	int reason =  GetEventInt(event, "reason");
+	if(view_as<CSRoundEndReason>(reason) == CSRoundEnd_Draw)
+	{
+		if(GetConVarInt(g_roundDrawPlay) == 1) winner = CS_TEAM_T;
+		else if(GetConVarInt(g_roundDrawPlay) == 2) winner = CS_TEAM_CT;
+	}
+	
+	if((winner == CS_TEAM_CT && SamePath) || winner == CS_TEAM_T)
+	{
+		if(SoundsTRSucess)
+		{
+			PlaySoundTR();
+		}
+		else
+		{
+			if(!SamePath) 
+			{
+				PrintToServer("[AbNeR RES] TR_SOUNDS ERROR: Sounds not loaded.");
+				CPrintToChatAll("{green}[AbNeR RES] {default}TR_SOUNDS ERROR: Sounds not loaded.");
+			}
+			else
+			{
+				PrintToServer("[AbNeR RES] SOUNDS ERROR: Sounds not loaded.");
+				CPrintToChatAll("{green}[AbNeR RES] {default}SOUNDS ERROR: Sounds not loaded.");
+			}
+			return;
+		}
+	}
+	else if(winner == CS_TEAM_CT)
+	{
+		if(SoundsCTSucess)
+		{
+			PlaySoundCT();
+		}
+		else
+		{
+			PrintToServer("[AbNeR RES] CT_SOUNDS ERROR: Sounds not loaded.");
+			return;
+		}
+	}
+	
+	if(GetConVarInt(g_hStop) == 1)
+		StopMapMusic();
 }
 
 public void Event_RoundStart(Handle event, const char[] name, bool dontBroadcast)
@@ -222,7 +254,7 @@ public void PathChange(Handle cvar, const char[] oldVal, const char[] newVal)
 	RefreshSounds(0);
 }
 
-public void OnMapStart()
+public void OnConfigsExecuted()
 {
 	RefreshSounds(0);
 }
@@ -240,25 +272,37 @@ void RefreshSounds(int client)
 		size = LoadSoundsTR();
 		SoundsTRSucess = (size > 0);
 		if(SoundsTRSucess)
+		{
 			ReplyToCommand(client, "[AbNeR RES] SOUNDS: %d sounds loaded.", size);
+		}
 		else
-			ReplyToCommand(client, "[AbNeR RES] INVALID TR SOUND PATH.");
+		{
+			ReplyToCommand(client, "[AbNeR RES] INVALID SOUND PATH.");
+		}
 	}
 	else
 	{
 		size = LoadSoundsTR();
 		SoundsTRSucess = (size > 0);
 		if(SoundsTRSucess)
+		{
 			ReplyToCommand(client, "[AbNeR RES] TR_SOUNDS: %d sounds loaded.", size);
+		}
 		else
+		{
 			ReplyToCommand(client, "[AbNeR RES] INVALID TR SOUND PATH.");
+		}
 		
 		size = LoadSoundsCT();
 		SoundsCTSucess = (size > 0);
 		if(SoundsCTSucess)
+		{
 			ReplyToCommand(client, "[AbNeR RES] CT_SOUNDS: %d sounds loaded.", size);
+		}
 		else
+		{
 			ReplyToCommand(client, "[AbNeR RES] INVALID CT SOUND PATH.");
+		}
 	}
 }
  
@@ -318,7 +362,7 @@ int LoadSoundsTR()
 	return trSound.Length;
 }
 
-float PlaySoundCT()
+void PlaySoundCT()
 {
 	int soundToPlay;
 	if(GetConVarInt(g_hPlayType) == 1)
@@ -333,25 +377,12 @@ float PlaySoundCT()
 	char szSound[128];
 	ctSound.GetString(soundToPlay, szSound, sizeof(szSound));
 	ctSound.Erase(soundToPlay);
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if(IsValidClient(i) && GetIntCookie(i, g_AbNeRCookie) == 0)
-		{
-			if(CSGO)
-			{
-				ClientCommand(i, "playgamesound Music.StopAllMusic");
-				ClientCommand(i, "play *%s", szSound);
-			}
-			else
-				ClientCommand(i, "play %s", szSound);
-		}
-	}
+	PlayMusicAll(szSound);
 	if(ctSound.Length == 0)
 		LoadSoundsCT();
-	return soundLenght(szSound);
 }
 
-float PlaySoundTR()
+void PlaySoundTR()
 {
 	int soundToPlay;
 	if(GetConVarInt(g_hPlayType) == 1)
@@ -366,139 +397,38 @@ float PlaySoundTR()
 	char szSound[128];
 	trSound.GetString(soundToPlay, szSound, sizeof(szSound));
 	trSound.Erase(soundToPlay);
-	for (int i = 1; i <= MaxClients; i++)
+	PlayMusicAll(szSound);
+	if(trSound.Length == 0)
+		LoadSoundsTR();
+}
+
+void PlayMusicAll(char[] szSound)
+{
+	if(CSGO)
 	{
-		if(IsValidClient(i) && GetIntCookie(i, g_AbNeRCookie) == 0)
+		for (int i = 1; i <= MaxClients; i++)
 		{
-			if(CSGO)
+			if(IsValidClient(i) && GetIntCookie(i, g_AbNeRCookie) == 0)
 			{
 				ClientCommand(i, "playgamesound Music.StopAllMusic");
 				ClientCommand(i, "play *%s", szSound);
 			}
-			else
+		}
+	}
+	else
+	{
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if(IsValidClient(i) && GetIntCookie(i, g_AbNeRCookie) == 0)
+			{
 				ClientCommand(i, "play %s", szSound);
-		}
-	}
-	if(trSound.Length == 0)
-		LoadSoundsTR();
-	return soundLenght(szSound);
-}
-
-
-float soundLenght(char[] sound)
-{
-	float CurrentSoundLenght = 0.0;
-	if(soundLib)
-	{
-		Handle Sound = OpenSoundFile(sound);
-		if(Sound != INVALID_HANDLE)
-			CurrentSoundLenght = GetSoundLengthFloat(Sound);
-	}
-	return CurrentSoundLenght;
-}
-
-//Round End Reasons
-//TRWIN 0 2 3 8 12 14 17 19
-//CTWIN 4 5 6 7 10 11 13 16
-//DRAW 9 15
-
-int TRWIN[] = {0, 2, 3, 8, 12, 14, 17, 19};
-int CTWIN[] = {4, 5, 6, 7, 10, 11, 13, 16};
-
-bool IsCTReason(int reason)
-{
-	for(int i = 0;i<sizeof(CTWIN);i++)
-	{
-		if(CTWIN[i] == reason) return true;
-	}
-	return false;
-}
-
-bool IsTRReason(int reason)
-{
-	for(int i = 0;i<sizeof(TRWIN);i++)
-	{
-		if(TRWIN[i] == reason) return true;
-	}
-	return false;
-}
-
-int GetWinner(int reason)
-{
-	if(IsTRReason(reason))
-	{
-		//PrintToChatAll("TR WIN");
-		return 2;
-	}
-	if(IsCTReason(reason))
-	{
-		//PrintToChatAll("CT WIN");
-		return 3;
-	}
-	//PrintToChatAll("DRAW");
-	return 0;
-}
-
-public Action CS_OnTerminateRound(float &delay, CSRoundEndReason &reason)
-{
-	char szReason[5];
-	Format(szReason, sizeof(szReason), "%d", reason);
-	int reason2 = StringToInt(szReason);
-	int winner = GetWinner(reason2);
-	float CurrentSoundLenght;
-	
-	if(winner == 0)
-	{
-		if(GetConVarInt(g_roundDrawPlay) == 1) winner = 2;
-		else if(GetConVarInt(g_roundDrawPlay) == 2) winner = 3;
-	}
-	else if(winner == 3 && SamePath)
-	{
-		winner = 2;
-	}
-	
-	switch(winner)
-	{
-		case 0:
-		{
-			return Plugin_Continue;
-		}
-		case 2:
-		{
-			if(SoundsTRSucess)
-			{
-				CurrentSoundLenght = PlaySoundTR();
-			}
-			else
-			{
-				if(!SamePath) PrintToServer("[AbNeR RES] TR_SOUNDS ERROR: Sounds not loaded.");
-				else PrintToServer("[AbNeR RES] SOUNDS ERROR: Sounds not loaded.");
-				return Plugin_Continue;
-			}
-		}	
-		case 3:
-		{
-			if(SoundsCTSucess)
-			{
-				CurrentSoundLenght = PlaySoundCT();
-			}
-			else
-			{
-				PrintToServer("[AbNeR RES] CT_SOUNDS ERROR: Sounds not loaded.");
-				return Plugin_Continue;
 			}
 		}
 	}
-	
-	if(GetConVarInt(g_hStop) == 1)
-		StopMapMusic();
-	
-	if(GetConVarInt(g_playToTheEnd) == 1 && soundLib && CurrentSoundLenght > 0.0)
+	if(GetConVarInt(g_PlayPrint) == 1)
 	{
-		CS_TerminateRound(CurrentSoundLenght, reason, true);
-		return Plugin_Handled;
+		CPrintToChatAll("{green}[AbNeR RES] {default}%t", "mp3 print", szSound);
 	}
-	return Plugin_Continue;
 }
 
 
@@ -507,7 +437,6 @@ public Action CommandLoad(int client, int args)
 	RefreshSounds(client);
 	return Plugin_Handled;
 }
-
 
 int GetIntCookie(int client, Handle handle)
 {
