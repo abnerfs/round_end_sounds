@@ -3,21 +3,27 @@
 	"JoinMsg"
 	{
 		"en"		"Type {lightgreen}!res {default}to disable/enable the round end sounds."
-		"ru"		"Напишите {lightgreen}!res {default}что бы включить/отключить музыку в конце раунда."
+		"pt" 		"Digite {lightgreen}!res {default}para desativar/ativar os sons no fim da rodada."
 	}
 	"Selected"
 	{
 		"en"	  	"(X)"
-		"ru"	  	"(X)"
+		"pt" 		"(X)"
 	}
 	"RES_ON"
 	{
 		"en"	  	"Sounds ON."
-		"ru"	  	"Играть с музыкой."
+		"pt"		"Sons Ativados."
 	}
 	"RES_OFF"
 	{
 		"en"	  	"No Sounds."
-		"ru"	  	"Без музыки."
+		"pt" 		"Sem sons."
+	}
+	"mp3 print"
+	{
+		"#format"	 "{1:s}"
+		"en" 			 "Now playing {green}{1}"
+		"pt"			 "Tocando {green}{1}"
 	}
 }
