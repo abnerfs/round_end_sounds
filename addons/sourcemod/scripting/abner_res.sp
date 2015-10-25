@@ -6,7 +6,7 @@
 
 #pragma newdecls required // 2015 rules 
 #pragma semicolon 1
-#define PLUGIN_VERSION "3.3fix_simple"
+#define PLUGIN_VERSION "3.3fix2_simple"
 
 //MapSounds Stuff
 int g_iSoundEnts[2048];
@@ -70,8 +70,8 @@ public void OnPluginStart()
 	HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
 	HookEvent("round_end", Event_RoundEnd);
 	
-	ctSound = new ArrayList(128);
-	trSound = new ArrayList(128);
+	ctSound = new ArrayList(512);
+	trSound = new ArrayList(512);
 }
 
 stock bool IsValidClient(int client)
@@ -309,8 +309,8 @@ void RefreshSounds(int client)
 int LoadSoundsCT()
 {
 	ctSound.Clear();
-	char name[64];
-	char soundname[64];
+	char name[128];
+	char soundname[512];
 	char soundpath[PLATFORM_MAX_PATH];
 	char soundpath2[PLATFORM_MAX_PATH];
 	GetConVarString(g_hCTPath, soundpath, sizeof(soundpath));
@@ -337,8 +337,8 @@ int LoadSoundsCT()
 int LoadSoundsTR()
 {
 	trSound.Clear();
-	char name[64];
-	char soundname[64];
+	char name[128];
+	char soundname[512];
 	char soundpath[PLATFORM_MAX_PATH];
 	char soundpath2[PLATFORM_MAX_PATH];
 	GetConVarString(g_hTRPath, soundpath, sizeof(soundpath));
