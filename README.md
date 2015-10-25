@@ -8,7 +8,6 @@ SourceMod plugin to play cool musics when a round ends.
 
 #Requirements
 - SourceMod
-- Sounds Info Library https://forums.alliedmods.net/showthread.php?t=105816
 
 # Plugin Features:
 - CSS/CS:GO support.
@@ -17,6 +16,9 @@ SourceMod plugin to play cool musics when a round ends.
 - Stops map musics to prevent play of two songs at the same time. (Thanks to GoD-Tony).
 - Type !res to choose if you want or not listen the sounds.
 - Play the sounds to the end.
+
+# Sounds Format:
+- I recommend MP3 128 kbps 32000 Hz
 
 #Support
 - AlliedModders Thread: https://forums.alliedmods.net/showthread.php?p=2338666#post2338666
