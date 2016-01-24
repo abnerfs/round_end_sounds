@@ -6,7 +6,7 @@
 
 #pragma newdecls required // 2015 rules 
 #pragma semicolon 1
-#define PLUGIN_VERSION "3.3fix2_simple"
+#define PLUGIN_VERSION "3.4"
 
 //MapSounds Stuff
 int g_iSoundEnts[2048];
@@ -20,6 +20,7 @@ Handle g_AbNeRCookie;
 Handle g_hStop;
 Handle g_PlayPrint;
 Handle g_roundDrawPlay;
+Handle g_ClientSettings; //Adicionado na versão v3.4 para definir se o jogador pode ou não escolher se quer ouvir os sons.
 
 bool SoundsTRSucess = false;
 bool SoundsCTSucess = false;
@@ -42,12 +43,13 @@ public void OnPluginStart()
 {  
 	//Cvars
 	CreateConVar("abner_res_version", PLUGIN_VERSION, "Plugin version", FCVAR_NOTIFY|FCVAR_REPLICATED);
-	g_hTRPath              = CreateConVar("res_tr_path", "misc/tecnohard", "Path off tr sounds in /cstrike/sound");
-	g_hCTPath              = CreateConVar("res_ct_path", "misc/tecnohard", "Path off ct sounds in /cstrike/sound");
-	g_hPlayType           = CreateConVar("res_play_type", "1", "1 - Random, 2- Play in queue");
-	g_hStop                  = CreateConVar("res_stop_map_music", "1", "Stop map musics");	
-	g_PlayPrint             = CreateConVar("res_print_to_chat_mp3_name", "1", "Print mp3 name in chat (Suggested by m22b)");
-	g_roundDrawPlay   = CreateConVar("res_rounddraw_play", "0", "0 - Don´t play sounds, 1 - Play TR sounds, 2 - Play CT sounds.");
+	g_hTRPath	               = CreateConVar("res_tr_path", "misc/tecnohard", "Path off tr sounds in /cstrike/sound");
+	g_hCTPath   	           = CreateConVar("res_ct_path", "misc/tecnohard", "Path off ct sounds in /cstrike/sound");
+	g_hPlayType                = CreateConVar("res_play_type", "1", "1 - Random, 2- Play in queue");
+	g_hStop                    = CreateConVar("res_stop_map_music", "1", "Stop map musics");	
+	g_PlayPrint                = CreateConVar("res_print_to_chat_mp3_name", "1", "Print mp3 name in chat (Suggested by m22b)");
+	g_roundDrawPlay            = CreateConVar("res_rounddraw_play", "0", "0 - Don´t play sounds, 1 - Play TR sounds, 2 - Play CT sounds.");
+	g_ClientSettings	       = CreateConVar("res_client_preferences", "1", "Enable/Disable client preferences");
 	
 	//ClientPrefs
 	g_AbNeRCookie = RegClientCookie("AbNeR Round End Sounds", "", CookieAccess_Private);
@@ -106,8 +108,7 @@ stock void Client_StopSound(int client, int entity, int channel, const char[] na
 public void Event_RoundEnd(Handle event, const char[] name, bool dontBroadcast)
 {
 	int winner = GetEventInt(event, "winner");
-	int reason =  GetEventInt(event, "reason");
-	if(view_as<CSRoundEndReason>(reason) == CSRoundEnd_Draw)
+	if(winner != 2 && winner != 3) //Validação para round draw
 	{
 		if(GetConVarInt(g_roundDrawPlay) == 1) winner = CS_TEAM_T;
 		else if(GetConVarInt(g_roundDrawPlay) == 2) winner = CS_TEAM_CT;
@@ -143,6 +144,7 @@ public void Event_RoundEnd(Handle event, const char[] name, bool dontBroadcast)
 		else
 		{
 			PrintToServer("[AbNeR RES] CT_SOUNDS ERROR: Sounds not loaded.");
+			CPrintToChatAll("{green}[AbNeR RES] {default}CT_SOUNDS ERROR: Sounds not loaded.");
 			return;
 		}
 	}
@@ -182,7 +184,10 @@ public void SoundCookieHandler(int client, CookieMenuAction action, any info, ch
 
 public void OnClientPutInServer(int client)
 {
-	CreateTimer(3.0, msg, client);
+	if(GetConVarInt(g_ClientSettings) == 1)
+	{
+		CreateTimer(3.0, msg, client);
+	}
 }
 
 public Action msg(Handle timer, any client)
@@ -195,6 +200,11 @@ public Action msg(Handle timer, any client)
 
 public Action abnermenu(int client, int args)
 {
+	if(GetConVarInt(g_ClientSettings) != 1)
+	{
+		return Plugin_Handled;
+	}
+	
 	int cookievalue = GetIntCookie(client, g_AbNeRCookie);
 	Handle g_AbNeRMenu = CreateMenu(AbNeRMenuHandler);
 	SetMenuTitle(g_AbNeRMenu, "Round End Sounds by AbNeR_CSS");
@@ -216,6 +226,7 @@ public Action abnermenu(int client, int args)
 	SetMenuExitBackButton(g_AbNeRMenu, true);
 	SetMenuExitButton(g_AbNeRMenu, true);
 	DisplayMenu(g_AbNeRMenu, client, 30);
+	return Plugin_Continue;
 }
 
 public int AbNeRMenuHandler(Handle menu, MenuAction action, int param1, int param2)
@@ -316,8 +327,7 @@ int LoadSoundsCT()
 	GetConVarString(g_hCTPath, soundpath, sizeof(soundpath));
 	Format(soundpath2, sizeof(soundpath2), "sound/%s/", soundpath);
 	Handle pluginsdir = OpenDirectory(soundpath2);
-	SoundsCTSucess = (pluginsdir != INVALID_HANDLE);
-	if(SoundsCTSucess)
+	if(pluginsdir != INVALID_HANDLE)
 	{
 		while(ReadDirEntry(pluginsdir,name,sizeof(name)))
 		{
@@ -344,8 +354,7 @@ int LoadSoundsTR()
 	GetConVarString(g_hTRPath, soundpath, sizeof(soundpath));
 	Format(soundpath2, sizeof(soundpath2), "sound/%s/", soundpath);
 	Handle pluginsdir = OpenDirectory(soundpath2);
-	SoundsCTSucess = (pluginsdir != INVALID_HANDLE);
-	if(SoundsCTSucess)
+	if(pluginsdir != INVALID_HANDLE)
 	{
 		while(ReadDirEntry(pluginsdir,name,sizeof(name)))
 		{
@@ -364,14 +373,10 @@ int LoadSoundsTR()
 
 void PlaySoundCT()
 {
-	int soundToPlay;
+	int soundToPlay = 0;
 	if(GetConVarInt(g_hPlayType) == 1)
 	{
 		soundToPlay = GetRandomInt(0, ctSound.Length-1);
-	}
-	else
-	{
-		soundToPlay = 0;
 	}
 	
 	char szSound[128];
@@ -384,14 +389,10 @@ void PlaySoundCT()
 
 void PlaySoundTR()
 {
-	int soundToPlay;
+	int soundToPlay = 0;
 	if(GetConVarInt(g_hPlayType) == 1)
 	{
 		soundToPlay = GetRandomInt(0, trSound.Length-1);
-	}
-	else
-	{
-		soundToPlay = 0;
 	}
 	
 	char szSound[128];
@@ -404,33 +405,27 @@ void PlaySoundTR()
 
 void PlayMusicAll(char[] szSound)
 {
-	if(CSGO)
+	for (int i = 1; i <= MaxClients; i++)
 	{
-		for (int i = 1; i <= MaxClients; i++)
+		if(IsValidClient(i) && (GetConVarInt(g_ClientSettings) == 0 || GetIntCookie(i, g_AbNeRCookie) == 0)) //Adicionado versão v3.4
 		{
-			if(IsValidClient(i) && GetIntCookie(i, g_AbNeRCookie) == 0)
-			{
+			if(CSGO)
+			{ 
 				ClientCommand(i, "playgamesound Music.StopAllMusic");
 				ClientCommand(i, "play *%s", szSound);
 			}
-		}
-	}
-	else
-	{
-		for (int i = 1; i <= MaxClients; i++)
-		{
-			if(IsValidClient(i) && GetIntCookie(i, g_AbNeRCookie) == 0)
+			else
 			{
 				ClientCommand(i, "play %s", szSound);
 			}
 		}
 	}
+	
 	if(GetConVarInt(g_PlayPrint) == 1)
 	{
 		CPrintToChatAll("{green}[AbNeR RES] {default}%t", "mp3 print", szSound);
 	}
 }
-
 
 public Action CommandLoad(int client, int args)
 {   
@@ -444,8 +439,3 @@ int GetIntCookie(int client, Handle handle)
 	GetClientCookie(client, handle, sCookieValue, sizeof(sCookieValue));
 	return StringToInt(sCookieValue);
 }
-
-
-
-
-
