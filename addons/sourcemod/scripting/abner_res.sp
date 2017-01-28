@@ -4,51 +4,55 @@
 #include <clientprefs>
 #include <cstrike>
 
-#pragma newdecls required // 2015 rules 
+#pragma newdecls required
 #pragma semicolon 1
-#define PLUGIN_VERSION "3.4"
+#define PLUGIN_VERSION "3.5"
 
 //MapSounds Stuff
 int g_iSoundEnts[2048];
 int g_iNumSounds;
 
 //Cvars
-Handle g_hCTPath;
-Handle g_hTRPath;
-Handle g_hPlayType;
-Handle g_AbNeRCookie;
-Handle g_hStop;
-Handle g_PlayPrint;
-Handle g_roundDrawPlay;
-Handle g_ClientSettings; //Adicionado na versão v3.4 para definir se o jogador pode ou não escolher se quer ouvir os sons.
+ConVar g_hCTPath;
+ConVar g_hTRPath;
+ConVar g_hDrawPath;
+ConVar g_hPlayType;
+ConVar g_hStop;
+ConVar g_PlayPrint;
+ConVar g_ClientSettings; 
 
-bool SoundsTRSucess = false;
-bool SoundsCTSucess = false;
 bool SamePath = false;
 bool CSGO;
+Handle g_AbNeRCookie;
+
 //Sounds Arrays
-ArrayList ctSound;
-ArrayList trSound;
+ArrayList ctSoundsArray;
+ArrayList trSoundsArray;
+ArrayList drawSoundsArray;
+StringMap soundNames;
 
 public Plugin myinfo =
 {
-	name = "[CS:GO/CSS] AbNeR Round End Sounds Simple",
-	author = "AbNeR_CSS",
-	description = "Play cool musics when round ends!",
-	version = PLUGIN_VERSION,
-	url = "http://www.tecnohardclan.com/forum/"
+	name 			= "[CS:GO/CSS] AbNeR Round End Sounds",
+	author 			= "AbNeR_CSS",
+	description 	= "Play cool musics when round ends!",
+	version 		= PLUGIN_VERSION,
+	url 			= "http://www.tecnohardclan.com/forum/"
 }
 
 public void OnPluginStart()
 {  
 	//Cvars
 	CreateConVar("abner_res_version", PLUGIN_VERSION, "Plugin version", FCVAR_NOTIFY|FCVAR_REPLICATED);
-	g_hTRPath	               = CreateConVar("res_tr_path", "misc/tecnohard", "Path off tr sounds in /cstrike/sound");
-	g_hCTPath   	           = CreateConVar("res_ct_path", "misc/tecnohard", "Path off ct sounds in /cstrike/sound");
-	g_hPlayType                = CreateConVar("res_play_type", "1", "1 - Random, 2- Play in queue");
+	
+	g_hTRPath                  = CreateConVar("res_tr_path", "misc/tecnohard", "Path of sounds played when Terrorists Win the round");
+	g_hCTPath                  = CreateConVar("res_ct_path", "misc/tecnohard", "Path of sounds played when Counter-Terrorists Win the round");
+	g_hDrawPath				   = CreateConVar("res_draw_path", "misc/tecnohard", "Path of sounds played when Round Draw or 0 - Don´t play sounds, 1 - Play TR sounds, 2 - Play CT sounds");
+		
+	g_hPlayType                = CreateConVar("res_play_type", "2", "1 - Random, 2 - Play in queue");
 	g_hStop                    = CreateConVar("res_stop_map_music", "1", "Stop map musics");	
+	
 	g_PlayPrint                = CreateConVar("res_print_to_chat_mp3_name", "1", "Print mp3 name in chat (Suggested by m22b)");
-	g_roundDrawPlay            = CreateConVar("res_rounddraw_play", "0", "0 - Don´t play sounds, 1 - Play TR sounds, 2 - Play CT sounds.");
 	g_ClientSettings	       = CreateConVar("res_client_preferences", "1", "Enable/Disable client preferences");
 	
 	//ClientPrefs
@@ -59,21 +63,22 @@ public void OnPluginStart()
 	LoadTranslations("abner_res.phrases");
 	AutoExecConfig(true, "abner_res");
 
+	/* CMDS */
 	RegAdminCmd("res_refresh", CommandLoad, ADMFLAG_SLAY);
 	RegConsoleCmd("res", abnermenu);
-	
-	HookConVarChange(g_hTRPath, PathChange);
-	HookConVarChange(g_hCTPath, PathChange);
-	HookConVarChange(g_hPlayType, PathChange);
-	
+		
 	char theFolder[40];
 	GetGameFolderName(theFolder, sizeof(theFolder));
 	CSGO = StrEqual(theFolder, ("csgo"));
+	
+	/* EVENTS */
 	HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
 	HookEvent("round_end", Event_RoundEnd);
 	
-	ctSound = new ArrayList(512);
-	trSound = new ArrayList(512);
+	ctSoundsArray = new ArrayList(512);
+	trSoundsArray = new ArrayList(512);
+	drawSoundsArray = new ArrayList(512);
+	soundNames = new StringMap();
 }
 
 stock bool IsValidClient(int client)
@@ -100,7 +105,7 @@ public void StopMapMusic()
 	}
 }
 
-stock void Client_StopSound(int client, int entity, int channel, const char[] name)
+void Client_StopSound(int client, int entity, int channel, const char[] name)
 {
 	EmitSoundToClient(client, name, entity, channel, SNDLEVEL_NONE, SND_STOP, 0.0, SNDPITCH_NORMAL, _, _, _, true);
 }
@@ -108,48 +113,13 @@ stock void Client_StopSound(int client, int entity, int channel, const char[] na
 public void Event_RoundEnd(Handle event, const char[] name, bool dontBroadcast)
 {
 	int winner = GetEventInt(event, "winner");
-	if(winner != 2 && winner != 3) //Validação para round draw
-	{
-		if(GetConVarInt(g_roundDrawPlay) == 1) winner = CS_TEAM_T;
-		else if(GetConVarInt(g_roundDrawPlay) == 2) winner = CS_TEAM_CT;
-	}
 	
-	if((winner == CS_TEAM_CT && SamePath) || winner == CS_TEAM_T)
-	{
-		if(SoundsTRSucess)
-		{
-			PlaySoundTR();
-		}
-		else
-		{
-			if(!SamePath) 
-			{
-				PrintToServer("[AbNeR RES] TR_SOUNDS ERROR: Sounds not loaded.");
-				CPrintToChatAll("{green}[AbNeR RES] {default}TR_SOUNDS ERROR: Sounds not loaded.");
-			}
-			else
-			{
-				PrintToServer("[AbNeR RES] SOUNDS ERROR: Sounds not loaded.");
-				CPrintToChatAll("{green}[AbNeR RES] {default}SOUNDS ERROR: Sounds not loaded.");
-			}
-			return;
-		}
-	}
-	else if(winner == CS_TEAM_CT)
-	{
-		if(SoundsCTSucess)
-		{
-			PlaySoundCT();
-		}
-		else
-		{
-			PrintToServer("[AbNeR RES] CT_SOUNDS ERROR: Sounds not loaded.");
-			CPrintToChatAll("{green}[AbNeR RES] {default}CT_SOUNDS ERROR: Sounds not loaded.");
-			return;
-		}
-	}
-	
-	if(GetConVarInt(g_hStop) == 1)
+	bool Sucess = false;
+	if((winner == CS_TEAM_CT && SamePath) || winner == CS_TEAM_T) Sucess = PlaySound(trSoundsArray, g_hTRPath);
+	else if(winner == CS_TEAM_CT) Sucess = PlaySound(ctSoundsArray, g_hCTPath);
+	else Sucess = PlaySound(drawSoundsArray, g_hDrawPath);
+			
+	if(GetConVarInt(g_hStop) == 1 && Sucess)
 		StopMapMusic();
 }
 
@@ -260,10 +230,6 @@ public int AbNeRMenuHandler(Handle menu, MenuAction action, int param1, int para
 	return 0;
 }
 
-public void PathChange(Handle cvar, const char[] oldVal, const char[] newVal)
-{       
-	RefreshSounds(0);
-}
 
 public void OnConfigsExecuted()
 {
@@ -272,135 +238,136 @@ public void OnConfigsExecuted()
 
 void RefreshSounds(int client)
 {
-	char soundpath[PLATFORM_MAX_PATH];
-	char soundpath2[PLATFORM_MAX_PATH];
-	GetConVarString(g_hTRPath, soundpath, sizeof(soundpath));
-	GetConVarString(g_hCTPath, soundpath2, sizeof(soundpath2));
-	SamePath = StrEqual(soundpath, soundpath2);
-	int size;
+	char trSoundPath[PLATFORM_MAX_PATH];
+	char ctSoundPath[PLATFORM_MAX_PATH];
+	char drawSoundPath[PLATFORM_MAX_PATH];
+	
+	GetConVarString(g_hTRPath, trSoundPath, sizeof(trSoundPath));
+	GetConVarString(g_hCTPath, ctSoundPath, sizeof(ctSoundPath));
+	GetConVarString(g_hDrawPath, drawSoundPath, sizeof(drawSoundPath));
+		
+	SamePath = StrEqual(trSoundPath, ctSoundPath);
+
 	if(SamePath)
 	{
-		size = LoadSoundsTR();
-		SoundsTRSucess = (size > 0);
-		if(SoundsTRSucess)
-		{
-			ReplyToCommand(client, "[AbNeR RES] SOUNDS: %d sounds loaded.", size);
-		}
-		else
-		{
-			ReplyToCommand(client, "[AbNeR RES] INVALID SOUND PATH.");
-		}
+		ReplyToCommand(client, "[AbNeR RES] SOUNDS: %d sounds loaded from \"sound/%s\"", LoadSounds(trSoundsArray, g_hTRPath), trSoundPath);
 	}
 	else
 	{
-		size = LoadSoundsTR();
-		SoundsTRSucess = (size > 0);
-		if(SoundsTRSucess)
+		ReplyToCommand(client, "[AbNeR RES] CT SOUNDS: %d sounds loaded from \"sound/%s\"", LoadSounds(ctSoundsArray, g_hCTPath), ctSoundPath);
+		ReplyToCommand(client, "[AbNeR RES] TR SOUNDS: %d sounds loaded from \"sound/%s\"", LoadSounds(trSoundsArray, g_hTRPath), trSoundPath);
+	}
+	
+	int RoundDrawOption = GetConVarInt(g_hDrawPath);
+	switch(RoundDrawOption)
+	{
+		case 1:
 		{
-			ReplyToCommand(client, "[AbNeR RES] TR_SOUNDS: %d sounds loaded.", size);
+			drawSoundsArray = trSoundsArray;
+			g_hDrawPath = g_hTRPath;
+			ReplyToCommand(client, "[AbNeR RES] DRAW SOUNDS: %d sounds loaded from \"sound/%s\"", trSoundsArray.Length, trSoundPath);
 		}
-		else
+		case 2:
 		{
-			ReplyToCommand(client, "[AbNeR RES] INVALID TR SOUND PATH.");
+			drawSoundsArray = ctSoundsArray;
+			g_hDrawPath = g_hCTPath;
+			ReplyToCommand(client, "[AbNeR RES] DRAW SOUNDS: %d sounds loaded from \"sound/%s\"", ctSoundsArray.Length, ctSoundPath);
 		}
-		
-		size = LoadSoundsCT();
-		SoundsCTSucess = (size > 0);
-		if(SoundsCTSucess)
+		default:
 		{
-			ReplyToCommand(client, "[AbNeR RES] CT_SOUNDS: %d sounds loaded.", size);
-		}
-		else
-		{
-			ReplyToCommand(client, "[AbNeR RES] INVALID CT SOUND PATH.");
+			char drawSoundsPath[PLATFORM_MAX_PATH];
+			GetConVarString(g_hDrawPath, drawSoundsPath, sizeof(drawSoundsPath));
+			
+			if(!StrEqual(drawSoundsPath, ""))
+				ReplyToCommand(client, "[AbNeR RES] DRAW SOUNDS: %d sounds loaded from \"sound/%s\"", LoadSounds(drawSoundsArray, g_hDrawPath), drawSoundsPath);
 		}
 	}
+	
+	ParseSongNameKvFile();
+}
+
+
+public void ParseSongNameKvFile()
+{
+	soundNames.Clear();
+
+	char sPath[PLATFORM_MAX_PATH];
+	Format(sPath, sizeof(sPath), "configs/abner_res.txt");
+	BuildPath(Path_SM, sPath, sizeof(sPath), sPath);
+
+	if (!FileExists(sPath))
+		return;
+
+	KeyValues hKeyValues = CreateKeyValues("Abner Res");
+	if (!hKeyValues.ImportFromFile(sPath))
+		return;
+
+	if(hKeyValues.GotoFirstSubKey())
+	{
+		do
+		{
+			char sSectionName[255];
+			char sSongName[255];
+
+			hKeyValues.GetSectionName(sSectionName, sizeof(sSectionName));
+			hKeyValues.GetString("songname", sSongName, sizeof(sSongName));
+			soundNames.SetString(sSectionName, sSongName);
+		}
+		while(hKeyValues.GotoNextKey(false));
+	}
+	hKeyValues.Close();
 }
  
-int LoadSoundsCT()
+int LoadSounds(ArrayList arraySounds, ConVar pathConVar)
 {
-	ctSound.Clear();
-	char name[128];
-	char soundname[512];
-	char soundpath[PLATFORM_MAX_PATH];
-	char soundpath2[PLATFORM_MAX_PATH];
-	GetConVarString(g_hCTPath, soundpath, sizeof(soundpath));
-	Format(soundpath2, sizeof(soundpath2), "sound/%s/", soundpath);
-	Handle pluginsdir = OpenDirectory(soundpath2);
-	if(pluginsdir != INVALID_HANDLE)
+	arraySounds.Clear();
+	
+	char soundPath[PLATFORM_MAX_PATH];
+	char soundPathFull[PLATFORM_MAX_PATH];
+	GetConVarString(pathConVar, soundPath, sizeof(soundPath));
+	
+	Format(soundPathFull, sizeof(soundPathFull), "sound/%s/", soundPath);
+	DirectoryListing pluginsDir = OpenDirectory(soundPathFull);
+	
+	if(pluginsDir != null)
 	{
-		while(ReadDirEntry(pluginsdir,name,sizeof(name)))
+		char fileName[128];
+		while(pluginsDir.GetNext(fileName, sizeof(fileName)))
 		{
-			int namelen = strlen(name) - 4;
-			if(StrContains(name,".mp3",false) == namelen)
+			int extPosition = strlen(fileName) - 4;
+			if(StrContains(fileName,".mp3",false) == extPosition) //.mp3 Files Only
 			{
-				Format(soundname, sizeof(soundname), "sound/%s/%s", soundpath, name);
-				AddFileToDownloadsTable(soundname);
-				Format(soundname, sizeof(soundname), "%s/%s", soundpath, name);
-				ctSound.PushString(soundname);
+				char soundName[512];
+				Format(soundName, sizeof(soundName), "sound/%s/%s", soundPath, fileName);
+				AddFileToDownloadsTable(soundName);
+				
+				Format(soundName, sizeof(soundName), "%s/%s", soundPath, fileName);
+				arraySounds.PushString(soundName);
 			}
 		}
 	}
-	return ctSound.Length;
+	return arraySounds.Length;
 }
-
-int LoadSoundsTR()
+ 
+bool PlaySound(ArrayList arraySounds, ConVar pathConVar)
 {
-	trSound.Clear();
-	char name[128];
-	char soundname[512];
-	char soundpath[PLATFORM_MAX_PATH];
-	char soundpath2[PLATFORM_MAX_PATH];
-	GetConVarString(g_hTRPath, soundpath, sizeof(soundpath));
-	Format(soundpath2, sizeof(soundpath2), "sound/%s/", soundpath);
-	Handle pluginsdir = OpenDirectory(soundpath2);
-	if(pluginsdir != INVALID_HANDLE)
-	{
-		while(ReadDirEntry(pluginsdir,name,sizeof(name)))
-		{
-			int namelen = strlen(name) - 4;
-			if(StrContains(name,".mp3",false) == namelen)
-			{
-				Format(soundname, sizeof(soundname), "sound/%s/%s", soundpath, name);
-				AddFileToDownloadsTable(soundname);
-				Format(soundname, sizeof(soundname), "%s/%s", soundpath, name);
-				trSound.PushString(soundname);
-			}
-		}
-	}
-	return trSound.Length;
-}
-
-void PlaySoundCT()
-{
+	if(arraySounds.Length <= 0)
+		return false;
+		
 	int soundToPlay = 0;
 	if(GetConVarInt(g_hPlayType) == 1)
 	{
-		soundToPlay = GetRandomInt(0, ctSound.Length-1);
+		soundToPlay = GetRandomInt(0, arraySounds.Length-1);
 	}
 	
 	char szSound[128];
-	ctSound.GetString(soundToPlay, szSound, sizeof(szSound));
-	ctSound.Erase(soundToPlay);
+	arraySounds.GetString(soundToPlay, szSound, sizeof(szSound));
+	arraySounds.Erase(soundToPlay);
 	PlayMusicAll(szSound);
-	if(ctSound.Length == 0)
-		LoadSoundsCT();
-}
-
-void PlaySoundTR()
-{
-	int soundToPlay = 0;
-	if(GetConVarInt(g_hPlayType) == 1)
-	{
-		soundToPlay = GetRandomInt(0, trSound.Length-1);
-	}
-	
-	char szSound[128];
-	trSound.GetString(soundToPlay, szSound, sizeof(szSound));
-	trSound.Erase(soundToPlay);
-	PlayMusicAll(szSound);
-	if(trSound.Length == 0)
-		LoadSoundsTR();
+	if(arraySounds.Length == 0)
+		LoadSounds(arraySounds, pathConVar);
+		
+	return true;
 }
 
 void PlayMusicAll(char[] szSound)
@@ -412,18 +379,28 @@ void PlayMusicAll(char[] szSound)
 			if(CSGO)
 			{ 
 				ClientCommand(i, "playgamesound Music.StopAllMusic");
-				ClientCommand(i, "play *%s", szSound);
+				ClientCommand(i, "play \"*%s\"", szSound);
 			}
 			else
 			{
-				ClientCommand(i, "play %s", szSound);
+				ClientCommand(i, "play \"%s\"", szSound);
 			}
 		}
 	}
 	
 	if(GetConVarInt(g_PlayPrint) == 1)
 	{
-		CPrintToChatAll("{green}[AbNeR RES] {default}%t", "mp3 print", szSound);
+		char soundKey[100];
+		char soundPrint[512];
+		char buffer[20][255];
+		
+		int numberRetrieved = ExplodeString(szSound, "/", buffer, sizeof(buffer), sizeof(buffer[]), false);
+		if (numberRetrieved > 0)
+			Format(soundKey, sizeof(soundKey), buffer[numberRetrieved - 1]);
+		
+		soundNames.GetString(soundKey, soundPrint, sizeof(soundPrint));
+						
+		CPrintToChatAll("{green}[AbNeR RES] {default}%t", "mp3 print", !StrEqual(soundPrint, "") ? soundPrint : szSound);
 	}
 }
 
