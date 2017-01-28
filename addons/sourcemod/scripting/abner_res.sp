@@ -47,9 +47,9 @@ public void OnPluginStart()
 	
 	g_hTRPath                  = CreateConVar("res_tr_path", "misc/tecnohard", "Path of sounds played when Terrorists Win the round");
 	g_hCTPath                  = CreateConVar("res_ct_path", "misc/tecnohard", "Path of sounds played when Counter-Terrorists Win the round");
-	g_hDrawPath				   = CreateConVar("res_draw_path", "misc/tecnohard", "Path of sounds played when Round Draw or 0 - Don´t play sounds, 1 - Play TR sounds, 2 - Play CT sounds");
+	g_hDrawPath				   = CreateConVar("res_draw_path", "1", "Path of sounds played when Round Draw or 0 - Don´t play sounds, 1 - Play TR sounds, 2 - Play CT sounds");
 		
-	g_hPlayType                = CreateConVar("res_play_type", "2", "1 - Random, 2 - Play in queue");
+	g_hPlayType                = CreateConVar("res_play_type", "1", "1 - Random, 2 - Play in queue");
 	g_hStop                    = CreateConVar("res_stop_map_music", "1", "Stop map musics");	
 	
 	g_PlayPrint                = CreateConVar("res_print_to_chat_mp3_name", "1", "Print mp3 name in chat (Suggested by m22b)");
@@ -259,29 +259,30 @@ void RefreshSounds(int client)
 	}
 	
 	int RoundDrawOption = GetConVarInt(g_hDrawPath);
-	switch(RoundDrawOption)
-	{
-		case 1:
+	if(RoundDrawOption != 0)
+		switch(RoundDrawOption)
 		{
-			drawSoundsArray = trSoundsArray;
-			g_hDrawPath = g_hTRPath;
-			ReplyToCommand(client, "[AbNeR RES] DRAW SOUNDS: %d sounds loaded from \"sound/%s\"", trSoundsArray.Length, trSoundPath);
+			case 1:
+			{
+				drawSoundsArray = trSoundsArray;
+				g_hDrawPath = g_hTRPath;
+				ReplyToCommand(client, "[AbNeR RES] DRAW SOUNDS: %d sounds loaded from \"sound/%s\"", trSoundsArray.Length, trSoundPath);
+			}
+			case 2:
+			{
+				drawSoundsArray = ctSoundsArray;
+				g_hDrawPath = g_hCTPath;
+				ReplyToCommand(client, "[AbNeR RES] DRAW SOUNDS: %d sounds loaded from \"sound/%s\"", ctSoundsArray.Length, ctSoundPath);
+			}
+			default:
+			{
+				char drawSoundsPath[PLATFORM_MAX_PATH];
+				GetConVarString(g_hDrawPath, drawSoundsPath, sizeof(drawSoundsPath));
+				
+				if(!StrEqual(drawSoundsPath, ""))
+					ReplyToCommand(client, "[AbNeR RES] DRAW SOUNDS: %d sounds loaded from \"sound/%s\"", LoadSounds(drawSoundsArray, g_hDrawPath), drawSoundsPath);
+			}
 		}
-		case 2:
-		{
-			drawSoundsArray = ctSoundsArray;
-			g_hDrawPath = g_hCTPath;
-			ReplyToCommand(client, "[AbNeR RES] DRAW SOUNDS: %d sounds loaded from \"sound/%s\"", ctSoundsArray.Length, ctSoundPath);
-		}
-		default:
-		{
-			char drawSoundsPath[PLATFORM_MAX_PATH];
-			GetConVarString(g_hDrawPath, drawSoundsPath, sizeof(drawSoundsPath));
-			
-			if(!StrEqual(drawSoundsPath, ""))
-				ReplyToCommand(client, "[AbNeR RES] DRAW SOUNDS: %d sounds loaded from \"sound/%s\"", LoadSounds(drawSoundsArray, g_hDrawPath), drawSoundsPath);
-		}
-	}
 	
 	ParseSongNameKvFile();
 }
