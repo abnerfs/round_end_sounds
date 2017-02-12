@@ -6,7 +6,7 @@
 
 #pragma newdecls required
 #pragma semicolon 1
-#define PLUGIN_VERSION "3.5"
+#define PLUGIN_VERSION "3.5fix"
 
 //MapSounds Stuff
 int g_iSoundEnts[2048];
@@ -384,7 +384,7 @@ void PlayMusicAll(char[] szSound)
 			}
 			else
 			{
-				ClientCommand(i, "play \"%s\"", szSound);
+				ClientCommand(i, "play %s", szSound);
 			}
 		}
 	}
