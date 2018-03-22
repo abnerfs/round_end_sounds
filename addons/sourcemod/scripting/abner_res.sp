@@ -7,7 +7,7 @@
 
 #pragma newdecls required
 #pragma semicolon 1
-#define PLUGIN_VERSION "3.6"
+#define PLUGIN_VERSION "3.6.1"
 
 //MapSounds Stuff
 int g_iSoundEnts[2048];
@@ -253,6 +253,7 @@ void VolumeMenu(int client){
 
 	Menu volumeMenu = new Menu(VolumeMenuHandler);
 	volumeMenu.SetTitle("%t", "Sound Menu Title");
+	volumeMenu.ExitBackButton = true;
 
 	for(int i = 0; i < sizeof(volumeArray); i++)
 	{

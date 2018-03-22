@@ -14,8 +14,8 @@ SourceMod plugin to play cool musics when a round ends.
 - Sounds load automatically.
 - Stops standard CSGO round end sound.
 - Stops map musics to prevent play of two songs at the same time. (Thanks to GoD-Tony).
-- Type !res to choose if you want or not listen the sounds.
-- Play the sounds to the end.
+- Type !res to choose if you want or not listen the sounds and to set sound volume.
+
 
 # Sounds Format:
 - I recommend MP3 128 kbps 32000 Hz
