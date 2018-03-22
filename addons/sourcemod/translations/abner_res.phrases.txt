@@ -1,5 +1,10 @@
 "Phrases"
 {
+	"VOLUME"
+	{
+		"en" 		"Volume"
+		"pt" 		"Volume"
+	}
 	"JoinMsg"
 	{
 		"en"		"Type {lightgreen}!res {default}to disable/enable the round end sounds."
@@ -10,6 +15,13 @@
 		"en"	  	"(X)"
 		"pt" 		"(X)"
 	}
+
+	"Sound Menu Title"
+	{
+		"en" 		"Select sound volume"
+		"pt"		"Selecione o volume dos sons"
+	}
+	
 	"RES_ON"
 	{
 		"en"	  	"Sounds ON."

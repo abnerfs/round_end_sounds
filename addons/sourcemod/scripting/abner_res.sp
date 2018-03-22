@@ -3,10 +3,11 @@
 #include <colors>
 #include <clientprefs>
 #include <cstrike>
+#include <emitsoundany>
 
 #pragma newdecls required
 #pragma semicolon 1
-#define PLUGIN_VERSION "3.5fix"
+#define PLUGIN_VERSION "3.6"
 
 //MapSounds Stuff
 int g_iSoundEnts[2048];
@@ -20,10 +21,12 @@ ConVar g_hPlayType;
 ConVar g_hStop;
 ConVar g_PlayPrint;
 ConVar g_ClientSettings; 
+ConVar g_SoundVolume;
 
 bool SamePath = false;
 bool CSGO;
-Handle g_AbNeRCookie;
+Handle g_ResPlayCookie;
+Handle g_ResVolumeCookie;
 
 //Sounds Arrays
 ArrayList ctSoundsArray;
@@ -54,9 +57,13 @@ public void OnPluginStart()
 	
 	g_PlayPrint                = CreateConVar("res_print_to_chat_mp3_name", "1", "Print mp3 name in chat (Suggested by m22b)");
 	g_ClientSettings	       = CreateConVar("res_client_preferences", "1", "Enable/Disable client preferences");
+
+	g_SoundVolume 			   = CreateConVar("res_default_volume", "0.75", "Default sound volume.");
 	
 	//ClientPrefs
-	g_AbNeRCookie = RegClientCookie("AbNeR Round End Sounds", "", CookieAccess_Private);
+	g_ResPlayCookie = RegClientCookie("AbNeR Round End Sounds", "", CookieAccess_Private);
+	g_ResVolumeCookie = RegClientCookie("abner_res_volume", "Round end sound volume", CookieAccess_Private);
+
 	SetCookieMenuItem(SoundCookieHandler, 0, "AbNeR Round End Sounds");
 	
 	LoadTranslations("common.phrases");
@@ -67,9 +74,8 @@ public void OnPluginStart()
 	RegAdminCmd("res_refresh", CommandLoad, ADMFLAG_SLAY);
 	RegConsoleCmd("res", abnermenu);
 		
-	char theFolder[40];
-	GetGameFolderName(theFolder, sizeof(theFolder));
-	CSGO = StrEqual(theFolder, ("csgo"));
+	
+	CSGO = GetEngineVersion() == Engine_CSGO;
 	
 	/* EVENTS */
 	HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
@@ -175,40 +181,45 @@ public Action abnermenu(int client, int args)
 		return Plugin_Handled;
 	}
 	
-	int cookievalue = GetIntCookie(client, g_AbNeRCookie);
-	Handle g_AbNeRMenu = CreateMenu(AbNeRMenuHandler);
-	SetMenuTitle(g_AbNeRMenu, "Round End Sounds by AbNeR_CSS");
+	int cookievalue = GetIntCookie(client, g_ResPlayCookie);
+	Handle g_CookieMenu = CreateMenu(AbNeRMenuHandler);
+	SetMenuTitle(g_CookieMenu, "Round End Sounds by AbNeR_CSS");
 	char Item[128];
 	if(cookievalue == 0)
 	{
 		Format(Item, sizeof(Item), "%t %t", "RES_ON", "Selected"); 
-		AddMenuItem(g_AbNeRMenu, "ON", Item);
+		AddMenuItem(g_CookieMenu, "ON", Item);
 		Format(Item, sizeof(Item), "%t", "RES_OFF"); 
-		AddMenuItem(g_AbNeRMenu, "OFF", Item);
+		AddMenuItem(g_CookieMenu, "OFF", Item);
 	}
 	else
 	{
 		Format(Item, sizeof(Item), "%t", "RES_ON");
-		AddMenuItem(g_AbNeRMenu, "ON", Item);
+		AddMenuItem(g_CookieMenu, "ON", Item);
 		Format(Item, sizeof(Item), "%t %t", "RES_OFF", "Selected"); 
-		AddMenuItem(g_AbNeRMenu, "OFF", Item);
+		AddMenuItem(g_CookieMenu, "OFF", Item);
 	}
-	SetMenuExitBackButton(g_AbNeRMenu, true);
-	SetMenuExitButton(g_AbNeRMenu, true);
-	DisplayMenu(g_AbNeRMenu, client, 30);
+
+	Format(Item, sizeof(Item), "%t", "VOLUME");
+	AddMenuItem(g_CookieMenu, "volume", Item);
+
+
+	SetMenuExitBackButton(g_CookieMenu, true);
+	SetMenuExitButton(g_CookieMenu, true);
+	DisplayMenu(g_CookieMenu, client, 30);
 	return Plugin_Continue;
 }
 
-public int AbNeRMenuHandler(Handle menu, MenuAction action, int param1, int param2)
+public int AbNeRMenuHandler(Handle menu, MenuAction action, int client, int param2)
 {
-	Handle g_AbNeRMenu = CreateMenu(AbNeRMenuHandler);
+	Handle g_CookieMenu = CreateMenu(AbNeRMenuHandler);
 	if (action == MenuAction_DrawItem)
 	{
 		return ITEMDRAW_DEFAULT;
 	}
 	else if(param2 == MenuCancel_ExitBack)
 	{
-		ShowCookieMenu(param1);
+		ShowCookieMenu(client);
 	}
 	else if (action == MenuAction_Select)
 	{
@@ -216,18 +227,62 @@ public int AbNeRMenuHandler(Handle menu, MenuAction action, int param1, int para
 		{
 			case 0:
 			{
-				SetClientCookie(param1, g_AbNeRCookie, "0");
-				abnermenu(param1, 0);
+				SetClientCookie(client, g_ResPlayCookie, "0");
+				abnermenu(client, 0);
 			}
 			case 1:
 			{
-				SetClientCookie(param1, g_AbNeRCookie, "1");
-				abnermenu(param1, 0);
+				SetClientCookie(client, g_ResPlayCookie, "1");
+				abnermenu(client, 0);
+			}
+			case 2: 
+			{
+				VolumeMenu(client);
 			}
 		}
-		CloseHandle(g_AbNeRMenu);
+		CloseHandle(g_CookieMenu);
 	}
 	return 0;
+}
+
+void VolumeMenu(int client){
+	
+
+	float volumeArray[] = { 1.0, 0.75, 0.50, 0.25, 0.10 };
+	float selectedVolume = GetClientVolume(client);
+
+	Menu volumeMenu = new Menu(VolumeMenuHandler);
+	volumeMenu.SetTitle("%t", "Sound Menu Title");
+
+	for(int i = 0; i < sizeof(volumeArray); i++)
+	{
+		char strInfo[10];
+		Format(strInfo, sizeof(strInfo), "%0.2f", volumeArray[i]);
+
+		char display[20], selected[5];
+		if(volumeArray[i] == selectedVolume)
+			Format(selected, sizeof(selected), "%t", "Selected");
+
+		Format(display, sizeof(display), "%s %s", strInfo, selected);
+
+		volumeMenu.AddItem(strInfo, display);
+	}
+
+	volumeMenu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int VolumeMenuHandler(Menu menu, MenuAction action, int client, int param2)
+{
+	if(action == MenuAction_Select){
+		char sInfo[10];
+		GetMenuItem(menu, param2, sInfo, sizeof(sInfo));
+		SetClientCookie(client, g_ResVolumeCookie, sInfo);
+		VolumeMenu(client);
+	}
+	else if(param2 == MenuCancel_ExitBack)
+	{
+		abnermenu(client, 0);
+	}
 }
 
 
@@ -343,6 +398,7 @@ int LoadSounds(ArrayList arraySounds, ConVar pathConVar)
 				AddFileToDownloadsTable(soundName);
 				
 				Format(soundName, sizeof(soundName), "%s/%s", soundPath, fileName);
+				PrecacheSoundAny(soundName);
 				arraySounds.PushString(soundName);
 			}
 		}
@@ -375,17 +431,15 @@ void PlayMusicAll(char[] szSound)
 {
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if(IsValidClient(i) && (GetConVarInt(g_ClientSettings) == 0 || GetIntCookie(i, g_AbNeRCookie) == 0)) //Adicionado versão v3.4
+		if(IsValidClient(i) && (GetConVarInt(g_ClientSettings) == 0 || GetIntCookie(i, g_ResPlayCookie) == 0))
 		{
 			if(CSGO)
 			{ 
 				ClientCommand(i, "playgamesound Music.StopAllMusic");
-				ClientCommand(i, "play \"*%s\"", szSound);
 			}
-			else
-			{
-				ClientCommand(i, "play %s", szSound);
-			}
+			
+			float selectedVolume = GetClientVolume(i);
+			EmitSoundToClientAny(i, szSound, _, _, _, _, selectedVolume);
 		}
 	}
 	
@@ -409,6 +463,16 @@ public Action CommandLoad(int client, int args)
 {   
 	RefreshSounds(client);
 	return Plugin_Handled;
+}
+
+float GetClientVolume(int client){
+	char sCookieValue[11];
+	GetClientCookie(client, g_ResVolumeCookie, sCookieValue, sizeof(sCookieValue));
+
+	if(StrEqual(sCookieValue, "") || StrEqual(sCookieValue, "0"))
+		Format(sCookieValue , sizeof(sCookieValue), "%0.2f", GetConVarFloat(g_SoundVolume));
+
+	return StringToFloat(sCookieValue);
 }
 
 int GetIntCookie(int client, Handle handle)
