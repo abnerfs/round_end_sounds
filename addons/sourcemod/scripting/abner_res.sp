@@ -466,11 +466,13 @@ public Action CommandLoad(int client, int args)
 }
 
 float GetClientVolume(int client){
+	float defaultVolume = GetConVarFloat(g_SoundVolume);
+
 	char sCookieValue[11];
 	GetClientCookie(client, g_ResVolumeCookie, sCookieValue, sizeof(sCookieValue));
 
-	if(StrEqual(sCookieValue, "") || StrEqual(sCookieValue, "0"))
-		Format(sCookieValue , sizeof(sCookieValue), "%0.2f", GetConVarFloat(g_SoundVolume));
+	if(!GetConVarBool(g_ClientSettings) || StrEqual(sCookieValue, "") || StrEqual(sCookieValue, "0"))
+		Format(sCookieValue , sizeof(sCookieValue), "%0.2f", defaultVolume);
 
 	return StringToFloat(sCookieValue);
 }
