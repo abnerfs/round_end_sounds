@@ -2,11 +2,11 @@
 # [CSS/CS:GO] AbNeR Round End Sounds
 SourceMod plugin to play cool musics when a round ends.
 
-#Compatible Games:
+# Compatible Games:
 - Counter-Strike:Global Offensive
 - Counter-Strike:Source
 
-#Requirements
+# Requirements
 - SourceMod
 
 # Plugin Features:
@@ -20,10 +20,10 @@ SourceMod plugin to play cool musics when a round ends.
 # Sounds Format:
 - I recommend MP3 128 kbps 32000 Hz
 
-#Support
+# Support
 - AlliedModders Thread: https://forums.alliedmods.net/showthread.php?p=2338666#post2338666
 - TecnoHard Tópico (Brasil): http://www.tecnohardclan.com/forum/index.php/topic/2797-csgocss-abner-round-end-sounds/
 
-#Updates
+# Updates
 - I need your feedback and your ideas to improve the plugin, please leave your feedback after use this, thank you for all support.
 	
