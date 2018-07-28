@@ -7,7 +7,7 @@
 
 #pragma newdecls required
 #pragma semicolon 1
-#define PLUGIN_VERSION "3.6.1"
+#define PLUGIN_VERSION "3.6.2"
 
 //MapSounds Stuff
 int g_iSoundEnts[2048];
@@ -440,7 +440,7 @@ void PlayMusicAll(char[] szSound)
 			}
 			
 			float selectedVolume = GetClientVolume(i);
-			EmitSoundToClientAny(i, szSound, _, _, _, _, selectedVolume);
+			EmitSoundToClientAny(i, szSound, -2, 0, 0, 0, selectedVolume, 100, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);
 		}
 	}
 	
