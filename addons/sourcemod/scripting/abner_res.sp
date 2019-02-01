@@ -3,15 +3,12 @@
 #include <colors>
 #include <clientprefs>
 #include <cstrike>
-#include <emitsoundany>
+#include <abnersound>
 
 #pragma newdecls required
 #pragma semicolon 1
-#define PLUGIN_VERSION "3.6.2"
+#define PLUGIN_VERSION "3.6.3"
 
-//MapSounds Stuff
-int g_iSoundEnts[2048];
-int g_iNumSounds;
 
 //Cvars
 ConVar g_hCTPath;
@@ -24,7 +21,6 @@ ConVar g_ClientSettings;
 ConVar g_SoundVolume;
 
 bool SamePath = false;
-bool CSGO;
 Handle g_ResPlayCookie;
 Handle g_ResVolumeCookie;
 
@@ -75,8 +71,6 @@ public void OnPluginStart()
 	RegConsoleCmd("res", abnermenu);
 		
 	
-	CSGO = GetEngineVersion() == Engine_CSGO;
-	
 	/* EVENTS */
 	HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
 	HookEvent("round_end", Event_RoundEnd);
@@ -95,61 +89,66 @@ stock bool IsValidClient(int client)
 	return IsClientInGame(client);
 }
 
-public void StopMapMusic()
-{
-	char sSound[PLATFORM_MAX_PATH];
-	int entity = INVALID_ENT_REFERENCE;
-	for(int i=1;i<=MaxClients;i++){
-		if(!IsClientInGame(i)){ continue; }
-		for (int u=0; u<g_iNumSounds; u++){
-			entity = EntRefToEntIndex(g_iSoundEnts[u]);
-			if (entity != INVALID_ENT_REFERENCE){
-				GetEntPropString(entity, Prop_Data, "m_iszSound", sSound, sizeof(sSound));
-				Client_StopSound(i, entity, SNDCHAN_STATIC, sSound);
-			}
-		}
-	}
-}
 
-void Client_StopSound(int client, int entity, int channel, const char[] name)
-{
-	EmitSoundToClient(client, name, entity, channel, SNDLEVEL_NONE, SND_STOP, 0.0, SNDPITCH_NORMAL, _, _, _, true);
-}
 
 public void Event_RoundEnd(Handle event, const char[] name, bool dontBroadcast)
 {
 	int winner = GetEventInt(event, "winner");
+
+	bool random = GetConVarInt(g_hPlayType) == 1;
 	
-	bool Sucess = false;
-	if((winner == CS_TEAM_CT && SamePath) || winner == CS_TEAM_T) Sucess = PlaySound(trSoundsArray, g_hTRPath);
-	else if(winner == CS_TEAM_CT) Sucess = PlaySound(ctSoundsArray, g_hCTPath);
-	else Sucess = PlaySound(drawSoundsArray, g_hDrawPath);
-			
-	if(GetConVarInt(g_hStop) == 1 && Sucess)
-		StopMapMusic();
+	char szSound[128];
+
+	bool Success = false;
+	if((winner == CS_TEAM_CT && SamePath) || winner == CS_TEAM_T) 
+		Success = GetSound(trSoundsArray, g_hTRPath, random, szSound, sizeof(szSound));
+	else if(winner == CS_TEAM_CT) 
+		Success = GetSound(ctSoundsArray, g_hCTPath, random, szSound, sizeof(szSound));
+	else 
+		Success = GetSound(drawSoundsArray, g_hDrawPath, random, szSound, sizeof(szSound));
+	
+	if(Success) {
+		PlayMusicAll(szSound);
+
+		if(GetConVarInt(g_hStop) == 1)
+			StopMapMusic();
+	}
 }
+
+
+void PlayMusicAll(char[] szSound)
+{
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if(IsValidClient(i) && (GetConVarInt(g_ClientSettings) == 0 || GetIntCookie(i, g_ResPlayCookie) == 0))
+		{
+			float selectedVolume = GetClientVolume(i);
+			PlaySoundClient(i, szSound, selectedVolume);
+		}
+	}
+	
+	if(GetConVarInt(g_PlayPrint) == 1)
+	{
+		char soundKey[100];
+		char soundPrint[512];
+		char buffer[20][255];
+		
+		int numberRetrieved = ExplodeString(szSound, "/", buffer, sizeof(buffer), sizeof(buffer[]), false);
+		if (numberRetrieved > 0)
+			Format(soundKey, sizeof(soundKey), buffer[numberRetrieved - 1]);
+		
+		soundNames.GetString(soundKey, soundPrint, sizeof(soundPrint));
+						
+		CPrintToChatAll("{green}[AbNeR RES] {default}%t", "mp3 print", !StrEqual(soundPrint, "") ? soundPrint : szSound);
+	}
+}
+
 
 public void Event_RoundStart(Handle event, const char[] name, bool dontBroadcast)
 {
 	if(GetConVarInt(g_hStop) == 1)
 	{
-		// Ents are recreated every round.
-		g_iNumSounds = 0;
-		
-		// Find all ambient sounds played by the map.
-		char sSound[PLATFORM_MAX_PATH];
-		int entity = INVALID_ENT_REFERENCE;
-		
-		while ((entity = FindEntityByClassname(entity, "ambient_generic")) != INVALID_ENT_REFERENCE)
-		{
-			GetEntPropString(entity, Prop_Data, "m_iszSound", sSound, sizeof(sSound));
-			
-			int len = strlen(sSound);
-			if (len > 4 && (StrEqual(sSound[len-3], "mp3") || StrEqual(sSound[len-3], "wav")))
-			{
-				g_iSoundEnts[g_iNumSounds++] = EntIndexToEntRef(entity);
-			}
-		}
+		MapSounds();
 	}
 }
 
@@ -242,6 +241,10 @@ public int AbNeRMenuHandler(Handle menu, MenuAction action, int client, int para
 		}
 		CloseHandle(g_CookieMenu);
 	}
+	else if(action == MenuAction_End)
+	{
+		delete menu;
+	}
 	return 0;
 }
 
@@ -284,10 +287,14 @@ public int VolumeMenuHandler(Menu menu, MenuAction action, int client, int param
 	{
 		abnermenu(client, 0);
 	}
+	else if(action == MenuAction_End)
+	{
+		delete menu;
+	}
 }
 
 
-public void OnConfigsExecuted()
+public void OnMapStart()
 {
 	RefreshSounds(0);
 }
@@ -375,90 +382,8 @@ public void ParseSongNameKvFile()
 	hKeyValues.Close();
 }
  
-int LoadSounds(ArrayList arraySounds, ConVar pathConVar)
-{
-	arraySounds.Clear();
-	
-	char soundPath[PLATFORM_MAX_PATH];
-	char soundPathFull[PLATFORM_MAX_PATH];
-	GetConVarString(pathConVar, soundPath, sizeof(soundPath));
-	
-	Format(soundPathFull, sizeof(soundPathFull), "sound/%s/", soundPath);
-	DirectoryListing pluginsDir = OpenDirectory(soundPathFull);
-	
-	if(pluginsDir != null)
-	{
-		char fileName[128];
-		while(pluginsDir.GetNext(fileName, sizeof(fileName)))
-		{
-			int extPosition = strlen(fileName) - 4;
-			if(StrContains(fileName,".mp3",false) == extPosition) //.mp3 Files Only
-			{
-				char soundName[512];
-				Format(soundName, sizeof(soundName), "sound/%s/%s", soundPath, fileName);
-				AddFileToDownloadsTable(soundName);
-				
-				Format(soundName, sizeof(soundName), "%s/%s", soundPath, fileName);
-				PrecacheSoundAny(soundName);
-				arraySounds.PushString(soundName);
-			}
-		}
-	}
-	return arraySounds.Length;
-}
- 
-bool PlaySound(ArrayList arraySounds, ConVar pathConVar)
-{
-	if(arraySounds.Length <= 0)
-		return false;
-		
-	int soundToPlay = 0;
-	if(GetConVarInt(g_hPlayType) == 1)
-	{
-		soundToPlay = GetRandomInt(0, arraySounds.Length-1);
-	}
-	
-	char szSound[128];
-	arraySounds.GetString(soundToPlay, szSound, sizeof(szSound));
-	arraySounds.Erase(soundToPlay);
-	PlayMusicAll(szSound);
-	if(arraySounds.Length == 0)
-		LoadSounds(arraySounds, pathConVar);
-		
-	return true;
-}
 
-void PlayMusicAll(char[] szSound)
-{
-	for (int i = 1; i <= MaxClients; i++)
-	{
-		if(IsValidClient(i) && (GetConVarInt(g_ClientSettings) == 0 || GetIntCookie(i, g_ResPlayCookie) == 0))
-		{
-			if(CSGO)
-			{ 
-				ClientCommand(i, "playgamesound Music.StopAllMusic");
-			}
-			
-			float selectedVolume = GetClientVolume(i);
-			EmitSoundToClientAny(i, szSound, -2, 0, 0, 0, selectedVolume, 100, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);
-		}
-	}
-	
-	if(GetConVarInt(g_PlayPrint) == 1)
-	{
-		char soundKey[100];
-		char soundPrint[512];
-		char buffer[20][255];
-		
-		int numberRetrieved = ExplodeString(szSound, "/", buffer, sizeof(buffer), sizeof(buffer[]), false);
-		if (numberRetrieved > 0)
-			Format(soundKey, sizeof(soundKey), buffer[numberRetrieved - 1]);
-		
-		soundNames.GetString(soundKey, soundPrint, sizeof(soundPrint));
-						
-		CPrintToChatAll("{green}[AbNeR RES] {default}%t", "mp3 print", !StrEqual(soundPrint, "") ? soundPrint : szSound);
-	}
-}
+
 
 public Action CommandLoad(int client, int args)
 {   
