@@ -3,11 +3,15 @@
 #include <colors>
 #include <clientprefs>
 #include <cstrike>
+
+bool soundLib;
+
+
 #include <abnersound>
 
 #pragma newdecls required
 #pragma semicolon 1
-#define PLUGIN_VERSION "3.6.3"
+#define PLUGIN_VERSION "4.0.0"
 
 
 //Cvars
@@ -19,6 +23,7 @@ ConVar g_hStop;
 ConVar g_PlayPrint;
 ConVar g_ClientSettings; 
 ConVar g_SoundVolume;
+ConVar g_playToTheEnd;
 
 bool SamePath = false;
 Handle g_ResPlayCookie;
@@ -33,10 +38,10 @@ StringMap soundNames;
 public Plugin myinfo =
 {
 	name 			= "[CS:GO/CSS] AbNeR Round End Sounds",
-	author 			= "AbNeR_CSS",
+	author 			= "abnerfs",
 	description 	= "Play cool musics when round ends!",
 	version 		= PLUGIN_VERSION,
-	url 			= "http://www.tecnohardclan.com/forum/"
+	url 			= "https://github.com/abnerfs/round_end_sounds"
 }
 
 public void OnPluginStart()
@@ -55,6 +60,7 @@ public void OnPluginStart()
 	g_ClientSettings	       = CreateConVar("res_client_preferences", "1", "Enable/Disable client preferences");
 
 	g_SoundVolume 			   = CreateConVar("res_default_volume", "0.75", "Default sound volume.");
+	g_playToTheEnd 			   = CreateConVar("res_play_to_the_end", "0", "Play sounds to the end.");
 	
 	//ClientPrefs
 	g_ResPlayCookie = RegClientCookie("AbNeR Round End Sounds", "", CookieAccess_Private);
@@ -73,8 +79,9 @@ public void OnPluginStart()
 	
 	/* EVENTS */
 	HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
-	HookEvent("round_end", Event_RoundEnd);
 	
+	soundLib = (GetFeatureStatus(FeatureType_Native, "GetSoundLengthFloat") == FeatureStatus_Available);
+
 	ctSoundsArray = new ArrayList(512);
 	trSoundsArray = new ArrayList(512);
 	drawSoundsArray = new ArrayList(512);
@@ -89,14 +96,40 @@ stock bool IsValidClient(int client)
 	return IsClientInGame(client);
 }
 
+int TRWIN[] = {0, 2, 3, 8, 12, 14, 17, 19};
+int CTWIN[] = {4, 5, 6, 7, 10, 11, 13, 16};
+
+bool IsCTReason(int reason) {
+	for(int i = 0;i<sizeof(CTWIN);i++)
+		if(CTWIN[i] == reason) return true;
+
+	return false;
+}
+
+bool IsTRReason(int reason) {
+	for(int i = 0;i<sizeof(TRWIN);i++)
+		if(TRWIN[i] == reason) return true;
+
+	return false;
+}
+
+int GetWinner(int reason) {
+	if(IsTRReason(reason))
+		return 2;
+
+	if(IsCTReason(reason))
+		return 3;
+
+	return 0;
+}
 
 
-public void Event_RoundEnd(Handle event, const char[] name, bool dontBroadcast)
+
+public Action CS_OnTerminateRound(float &delay, CSRoundEndReason &reason)
 {
-	int winner = GetEventInt(event, "winner");
-
+	int winner = GetWinner(view_as<int>(reason));
 	bool random = GetConVarInt(g_hPlayType) == 1;
-	
+
 	char szSound[128];
 
 	bool Success = false;
@@ -112,7 +145,15 @@ public void Event_RoundEnd(Handle event, const char[] name, bool dontBroadcast)
 
 		if(GetConVarInt(g_hStop) == 1)
 			StopMapMusic();
+
+		if(GetConVarBool(g_playToTheEnd) && soundLib) {
+			float length = soundLenght(szSound);
+			delay = length;
+			return Plugin_Changed;
+		}
 	}
+
+	return Plugin_Continue;
 }
 
 

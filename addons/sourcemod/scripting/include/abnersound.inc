@@ -4,11 +4,37 @@
 #define _abner_sound_included
 
 #include <emitsoundany>
+#undef REQUIRE_EXTENSIONS
+#tryinclude <soundlib>
+#define REQUIRE_EXTENSIONS
 
 
 //MapSounds Stuff
 int g_iSoundEnts[2048];
 int g_iNumSounds;
+
+
+float soundLenght(char[] sound)
+{
+	float CurrentSoundLenght = 0.0;
+	if(soundLib)
+	{
+		Handle Sound = OpenSoundFile(sound);
+		if(Sound != INVALID_HANDLE) {
+			CurrentSoundLenght = GetSoundLengthFloat(Sound);
+			CloseHandle(Sound);
+		}
+	}
+	return CurrentSoundLenght;
+}
+
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+{
+	MarkNativeAsOptional("OpenSoundFile");
+	MarkNativeAsOptional("GetSoundLengthFloat");
+	return APLRes_Success;
+}
+
 
 
 public void StopMapMusic()
