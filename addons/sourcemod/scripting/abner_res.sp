@@ -11,7 +11,7 @@ bool soundLib;
 
 #pragma newdecls required
 #pragma semicolon 1
-#define PLUGIN_VERSION "4.0.0"
+#define PLUGIN_VERSION "4.0.1"
 
 
 //Cvars
@@ -96,8 +96,8 @@ stock bool IsValidClient(int client)
 	return IsClientInGame(client);
 }
 
-int TRWIN[] = {0, 2, 3, 8, 12, 14, 17, 19};
-int CTWIN[] = {4, 5, 6, 7, 10, 11, 13, 16};
+int TRWIN[] = {0, 3, 8, 12, 17, 18};
+int CTWIN[] = {4, 5, 6, 7, 10, 11, 13, 16, 19};
 
 bool IsCTReason(int reason) {
 	for(int i = 0;i<sizeof(CTWIN);i++)
