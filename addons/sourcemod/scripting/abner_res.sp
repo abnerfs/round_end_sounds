@@ -37,7 +37,7 @@ StringMap soundNames;
 
 public Plugin myinfo =
 {
-	name 			= "[CS:GO/CSS] AbNeR Round End Sounds",
+	name 			= "AbNeR Round End Sounds",
 	author 			= "abnerfs",
 	description 	= "Play cool musics when round ends!",
 	version 		= PLUGIN_VERSION,
@@ -73,8 +73,8 @@ public void OnPluginStart()
 	AutoExecConfig(true, "abner_res");
 
 	/* CMDS */
-	RegAdminCmd("res_refresh", CommandLoad, ADMFLAG_SLAY);
-	RegConsoleCmd("res", abnermenu);
+	RegAdminCmd("res_refresh", CommandLoad, ADMFLAG_SLAY, "Refresh sounds");
+	RegConsoleCmd("res", abnermenu, "Open Config Menu");
 		
 	
 	/* EVENTS */
