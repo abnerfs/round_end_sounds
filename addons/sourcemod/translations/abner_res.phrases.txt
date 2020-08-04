@@ -5,18 +5,21 @@
 		"en" 		"Volume"
 		"pt" 		"Volume"
 		"fr"		"Volume"
+	    "ru" 		"Громкость"
 	}
 	"JoinMsg"
 	{
 		"en"		"Type {lightgreen}!res {default}to disable/enable the round end sounds."
 		"pt" 		"Digite {lightgreen}!res {default}para desativar/ativar os sons no fim da rodada."
 		"fr"		"Tapez {lightgreen}!rss {default} pour désactiver/activer les sons a la fin de la manche."
+		"ru"		"Напишите {lightgreen}!res {default}, чтобы отключить/включить звуки окончания раунда."
 	}
 	"Selected"
 	{
 		"en"	  	"(X)"
 		"pt" 		"(X)"
 		"fr"		"(X)"
+		"ru"	  	"(X)"
 	}
 
 	"Sound Menu Title"
@@ -24,6 +27,7 @@
 		"en" 		"Select sound volume"
 		"pt"		"Selecione o volume dos sons"
 		"fr"		"Sélectionnez le volume de la musique"
+		"ru" 		"Выберите громкость звука"
 	}
 	
 	"RES_ON"
@@ -31,12 +35,14 @@
 		"en"	  	"Sounds ON."
 		"pt"		"Sons Ativados."
 		"fr"		"Son ACTIVE."
+		"ru"	  	"Звук ВКЛ."
 	}
 	"RES_OFF"
 	{
 		"en"	  	"No Sounds."
 		"pt" 		"Sem sons."
 		"fr"		"Son DÉSACTIVÉ."
+		"ru"	  	"Нет звука."
 	}
 	"mp3 print"
 	{
@@ -44,5 +50,6 @@
 		"en" 		 "Now playing {green}{1}"
 		"pt"		 "Tocando {green}{1}"
 		"fr"		 "Lecture en cours:{green}{1}" 	
+		"ru" 		 "Сейчас играет {green}{1}"
 	}
 }
