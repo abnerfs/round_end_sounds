@@ -100,7 +100,7 @@ int LoadSounds(ArrayList arraySounds, ConVar pathConVar)
 		while(pluginsDir.GetNext(fileName, sizeof(fileName)))
 		{
 			int extPosition = strlen(fileName) - 4;
-			if(StrContains(fileName,".mp3",false) == extPosition) //.mp3 Files Only
+			if(StrContains(fileName,".mp3",false) == extPosition || StrContains(fileName,".wav",false) == extPosition) 
 			{
 				char soundName[512];
 				Format(soundName, sizeof(soundName), "sound/%s/%s", soundPath, fileName);
@@ -129,7 +129,6 @@ bool GetSound(ArrayList arraySounds, ConVar pathConVar, bool random, char[] szSo
 	
 	arraySounds.GetString(soundToPlay, szSound, soundSize);
 	arraySounds.Erase(soundToPlay);
-	// PlayMusicAll(szSound);
     
 	if(arraySounds.Length == 0)
 		LoadSounds(arraySounds, pathConVar);

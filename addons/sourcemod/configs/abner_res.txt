@@ -1,11 +1,31 @@
 "Abner Res"
 {
-  "tecnohard1.mp3"
+  "defqwop-heart-afire.mp3"
   {
-    "songname" "Tecnohard 1 Sound"
+    "songname"  "Defqwop - Heart Afire (feat. Strix)"
   }
-  "othersong.mp3"
+  "cartoon-why-we-loose.mp3"
   {
-    "songname" "Happy Birthday Song"
+    "songname"  "Cartoon - Why We Lose (feat. Coleman Trapp)"
+  }
+  "disfigure-blank.mp3"
+  {
+    "songname"  "Disfigure - Blank"
+  }
+  "deaf-kev-invincible.mp3"
+  {
+    "songname"  "DEAF KEV - Invincible"
+  }
+  "different-heaven-my-heart.mp3"
+  {
+    "songname"  "Different Heaven & EH!DE - My Heart"
+  }
+  "lost-sky-where-we-started.mp3" 
+  {
+    "songname"  "Lost Sky - Where We Started (feat. Jex)"
+  }
+  "unknown-brain-matakafa.mp3"
+  {
+    "songname"  "Unknown Brain - Matafaka (feat. Marvin Divine)"
   }
 }
