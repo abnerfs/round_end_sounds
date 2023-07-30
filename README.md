@@ -34,4 +34,4 @@ Cvars can be found in [cfg/sourcemod/abner_res.cfg]
 - !res - Open config menu
 
 # Direct Download
-[Download the latest release](https://github.com/abnerfs/round_end_sounds/archive/refs/tags/v4.0.2.zip)
+[Download the latest release](https://github.com/abnerfs/round_end_sounds/archive/refs/tags/v4.0.3.zip)
