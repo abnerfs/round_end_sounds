@@ -10,7 +10,7 @@ bool soundLib;
 
 #pragma newdecls required
 #pragma semicolon 1
-#define PLUGIN_VERSION "4.0.2"
+#define PLUGIN_VERSION "4.0.3"
 
 ConVar	  g_hCTPath;
 ConVar	  g_hTRPath;
@@ -171,9 +171,7 @@ void PlayMusicAll(char[] szSound)
 		if (numberRetrieved > 0)
 			Format(soundKey, sizeof(soundKey), buffer[numberRetrieved - 1]);
 
-		PrintToChatAll(soundKey);
 		soundNames.GetString(soundKey, soundPrint, sizeof(soundPrint));
-
 		CPrintToChatAll("%t%t", "prefix", "mp3 print", !StrEqual(soundPrint, "") ? soundPrint : szSound);
 	}
 }
